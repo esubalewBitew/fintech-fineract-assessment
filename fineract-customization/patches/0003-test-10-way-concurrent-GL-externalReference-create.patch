@@ -1,0 +1,154 @@
+From a61c98da3b721b918df8db922890e9ab81f9485c Mon Sep 17 00:00:00 2001
+From: Esubalew Bitew <esubalewbitew13@gmail.com>
+Date: Wed, 28 Oct 2026 22:55:11 +0300
+Subject: [PATCH 3/3] test: 10-way concurrent GL externalReference create
+
+---
+ ...ePlatformServiceJpaRepositoryImplTest.java | 90 ++++++++++++++++++-
+ 1 file changed, 86 insertions(+), 4 deletions(-)
+
+diff --git a/fineract-accounting/src/test/java/org/apache/fineract/accounting/glaccount/service/GLAccountWritePlatformServiceJpaRepositoryImplTest.java b/fineract-accounting/src/test/java/org/apache/fineract/accounting/glaccount/service/GLAccountWritePlatformServiceJpaRepositoryImplTest.java
+index bab8bc94c7..1b51552d8c 100644
+--- a/fineract-accounting/src/test/java/org/apache/fineract/accounting/glaccount/service/GLAccountWritePlatformServiceJpaRepositoryImplTest.java
++++ b/fineract-accounting/src/test/java/org/apache/fineract/accounting/glaccount/service/GLAccountWritePlatformServiceJpaRepositoryImplTest.java
+@@ -20,18 +20,38 @@ package org.apache.fineract.accounting.glaccount.service;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertNotNull;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.anyString;
++import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.times;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
++import com.google.gson.JsonElement;
++import com.google.gson.JsonParser;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.List;
+ import java.util.Optional;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicInteger;
++import org.apache.fineract.accounting.glaccount.command.GLAccountCommand;
+ import org.apache.fineract.accounting.glaccount.domain.GLAccount;
+ import org.apache.fineract.accounting.glaccount.domain.GLAccountRepository;
++import org.apache.fineract.accounting.glaccount.exception.GLAccountExternalReferenceConflictException;
++import org.apache.fineract.accounting.glaccount.serialization.GLAccountCommandFromApiJsonDeserializer;
+ import org.apache.fineract.accounting.journalentry.domain.JournalEntry;
+ import org.apache.fineract.accounting.journalentry.domain.JournalEntryRepository;
+ import org.apache.fineract.accounting.producttoaccountmapping.domain.ProductToGLAccountMapping;
+ import org.apache.fineract.accounting.producttoaccountmapping.domain.ProductToGLAccountMappingRepository;
++import org.apache.fineract.infrastructure.core.api.JsonCommand;
+ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
++import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
++import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.ExtendWith;
+@@ -39,7 +59,9 @@ import org.mockito.ArgumentMatchers;
+ import org.mockito.InjectMocks;
+ import org.mockito.Mock;
+ import org.mockito.junit.jupiter.MockitoExtension;
++import org.springframework.dao.DataIntegrityViolationException;
+ import org.springframework.data.jpa.domain.Specification;
++import org.springframework.test.util.ReflectionTestUtils;
+ 
+ @ExtendWith(MockitoExtension.class)
+ class GLAccountWritePlatformServiceJpaRepositoryImplTest {
+@@ -53,6 +75,9 @@ class GLAccountWritePlatformServiceJpaRepositoryImplTest {
+     @Mock
+     private ProductToGLAccountMappingRepository productToGLAccountMappingRepository;
+ 
++    @Mock
++    private GLAccountCommandFromApiJsonDeserializer fromApiJsonDeserializer;
++
+     @Mock
+     private GLAccountExternalReferenceConflictResolver conflictResolver;
+ 
+@@ -75,17 +100,74 @@ class GLAccountWritePlatformServiceJpaRepositoryImplTest {
+      */
+     @Test
+     void testDeleteGLAccountSuccessWithNoDependencies() {
+-        // Given: A GL account with no children, no journal entries, and no product mappings
+         when(glAccountRepository.findById(GL_ACCOUNT_ID)).thenReturn(Optional.of(glAccount));
+         when(glJournalEntryRepository.exists(ArgumentMatchers.<Specification<JournalEntry>>any())).thenReturn(false);
+-        when(productToGLAccountMappingRepository.exists(ArgumentMatchers.<Specification<ProductToGLAccountMapping>>any())).thenReturn(false);
++        when(productToGLAccountMappingRepository.exists(ArgumentMatchers.<Specification<ProductToGLAccountMapping>>any()))
++                .thenReturn(false);
+ 
+-        // When: Attempting to delete the GL account
+         CommandProcessingResult result = glAccountWritePlatformService.deleteGLAccount(GL_ACCOUNT_ID);
+ 
+-        // Then: The deletion should succeed
+         assertNotNull(result);
+         assertEquals(GL_ACCOUNT_ID, result.getResourceId());
+         verify(glAccountRepository, times(1)).delete(glAccount);
+     }
++
++    /**
++     * Ten parallel creates with the same externalReference hit the unique-constraint race path. The resolver returns
++     * one existing id for every caller (Mockito unit test — not a real DB).
++     */
++    @Test
++    void tenParallelCreatesSameExternalReferenceYieldOneAccount() throws Exception {
++        ReflectionTestUtils.setField(glAccountWritePlatformService, "self", glAccountWritePlatformService);
++
++        final String json = "{\"name\":\"Loan Receivable\",\"glCode\":\"1200\",\"type\":1,\"usage\":1,"
++                + "\"manualEntriesAllowed\":true,\"externalReference\":\"GL-1200\"}";
++        final GLAccountCommand accountCommand = new GLAccountCommand(null, "Loan Receivable", null, "1200", false, true, 1, 1, "x", null,
++                "GL-1200");
++
++        when(fromApiJsonDeserializer.commandFromApiJson(anyString())).thenReturn(accountCommand);
++        when(glAccountRepository.findOneByExternalReference("GL-1200")).thenReturn(Optional.empty());
++        when(glAccountRepository.saveAndFlush(any(GLAccount.class))).thenThrow(new DataIntegrityViolationException("insert failed",
++                new RuntimeException("duplicate key value violates unique constraint \"uk_acc_gl_external_reference\"")));
++        when(conflictResolver.resolveAfterUniqueViolation(eq("GL-1200"), any(GLAccountCommand.class)))
++                .thenReturn(new CommandProcessingResultBuilder().withEntityId(99L).build());
++
++        final JsonElement element = JsonParser.parseString(json);
++        final JsonCommand command = JsonCommand.fromJsonElement(null, element, new FromJsonHelper());
++
++        final ExecutorService pool = Executors.newFixedThreadPool(10);
++        final CountDownLatch start = new CountDownLatch(1);
++        final CountDownLatch done = new CountDownLatch(10);
++        final AtomicInteger success = new AtomicInteger();
++        final AtomicInteger conflict = new AtomicInteger();
++        final AtomicInteger unexpected = new AtomicInteger();
++        final List<Long> ids = Collections.synchronizedList(new ArrayList<>());
++
++        for (int i = 0; i < 10; i++) {
++            pool.submit(() -> {
++                try {
++                    start.await();
++                    final CommandProcessingResult result = glAccountWritePlatformService.createGLAccount(command);
++                    ids.add(result.getResourceId());
++                    success.incrementAndGet();
++                } catch (GLAccountExternalReferenceConflictException e) {
++                    conflict.incrementAndGet();
++                } catch (Exception e) {
++                    unexpected.incrementAndGet();
++                } finally {
++                    done.countDown();
++                }
++            });
++        }
++
++        start.countDown();
++        assertTrue(done.await(30, TimeUnit.SECONDS), "all threads should finish within 30s");
++        pool.shutdown();
++
++        assertEquals(10, success.get());
++        assertEquals(0, conflict.get());
++        assertEquals(0, unexpected.get());
++        assertEquals(10, ids.size());
++        assertTrue(ids.stream().allMatch(id -> Long.valueOf(99L).equals(id)));
++    }
+ }
+-- 
+2.50.1 (Apple Git-155)
+
