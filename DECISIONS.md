@@ -14,6 +14,10 @@ A concurrent create can pass the select and then hit `uk_acc_gl_external_referen
 
 Workstreams are referred to by brief letters (**A-sync, E, F, G, H, I, J, K**), not “Part B”. In the brief, Part B is Fineract configuration (office, RWF, product, API user).
 
+## Part B bootstrap
+
+`scripts/fineract_setup_part_b.py` is the brief Part B deliverable: idempotent create-or-get for Kigali office, RWF currency, SME Asset Finance (cash accounting mapped to CoA-synced glCodes), and least-privilege `assessment-api` role/user. Product creation requires CoA GLs first (`POST /sync/coa`). Demo API password is local-only in `scripts/fineract_setup/setup.py` (Fineract complexity policy).
+
 ## `external_reference` pass-through (not namespaced)
 
 Alternative considered: prefix refs as `mock-erp:ERP-1001`. Rejected for v1 because reviewers may require the Fineract `externalReference` to **match** the ERP value exactly.

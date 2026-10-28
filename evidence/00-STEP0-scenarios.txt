@@ -1,0 +1,41 @@
+Step 0 — Hygiene (DB owners + split commits)
+============================================
+Date: 2026-10-29
+
+Goal
+----
+App DBs use dedicated owners (mock_erp / integration), not root.
+Local work split into logical commits; no Cursor co-author on push.
+
+Happy scenarios
+---------------
+H0.1 Fresh / migrated compose
+  Action: Applied 02-assessment-dbs roles (or ALTER on existing volume), then
+          docker compose up -d --force-recreate mock-erp integration-service
+  Expected: DATABASE_URL uses mock_erp / integration; /health returns ok
+  Result: PASS — see 00-db-roles.txt; containers print dedicated DATABASE_URL
+
+H0.2 Owner can create tables
+  Expected: Owner role owns public schema and existing app tables
+  Result: PASS — ALTER SCHEMA / REASSIGN on mock_erp + integration
+
+Failure / fix scenarios exercised
+---------------------------------
+F0.1 permission denied for schema public (non-owner)
+  Symptom: SQLAlchemy create_all fails on public
+  Fix: CREATE USER + CREATE/ALTER DATABASE … OWNER + ALTER SCHEMA public OWNER
+  Result: Documented; fixed on live volume without wiping Fineract tenant
+
+F0.2 Old volume without new roles
+  Symptom: Apps with dedicated URLs cannot auth to Postgres
+  Fix: Run role/owner SQL manually (done) OR docker compose down -v && up
+  Result: Manual SQL path used to preserve Fineract data
+
+F0.3 One mega-commit
+  Fix: Split into docs / db owners / mock-erp / integration / compose
+  Result: PASS (pushed earlier)
+
+Evidence files
+--------------
+- evidence/00-db-roles.txt
+- evidence/00-STEP0-scenarios.txt (this file)

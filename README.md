@@ -9,12 +9,12 @@ Pinned Fineract tag: `1.16.1`
 | Path | Brief |
 |------|--------|
 | `fineract-customization/patches/` | CBS customization (A) |
-| `ARCHITECTURE.md` / `DECISIONS.md` | Design decisions |
+| `DECISIONS.md` | Design decisions |
 | `mock-erp/` | G — ledger with journals |
 | `integration-service/` | A-sync, E–K middleware |
+| `scripts/fineract_setup_part_b.py` | Part B — office / RWF / product / API user |
+| `evidence/` | Step scenario logs + JSON outputs |
 | `docker-compose.yml` | Postgres + Fineract + Mock ERP + Integration |
-| `INTERVIEW_PREP_PART_A.md` | Fineract interview crib |
-| `INTERVIEW_PREP_MIDDLEWARE.md` | Middleware interview crib |
 
 ## Run
 
@@ -38,12 +38,25 @@ docker compose exec db psql -U root -c "CREATE DATABASE mock_erp OWNER mock_erp;
 docker compose exec db psql -U root -c "CREATE DATABASE integration OWNER integration;"
 ```
 
-Remaining work (B–K scenarios): `GAPS_PLAN.md`.
-
 ```bash
 curl -s http://localhost:8081/health
 curl -s -X POST http://localhost:8082/sync/coa -H "X-Api-Key: integration-key" | jq .
 ```
+
+## Part B — Fineract tenant setup
+
+After Fineract is up and CoA sync has created GLs:
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r scripts/requirements.txt
+PYTHONPATH=scripts python scripts/fineract_setup_part_b.py --out evidence/01-part-b-setup.json
+PYTHONPATH=scripts python -m pytest scripts/tests -q
+```
+
+Creates (idempotent): office **Kigali**, currency **RWF**, product **SME Asset Finance** (18% p.a., 12 months, cash GL mappings), role/user **assessment-api** / **assessment.api**.
+
+Scenario notes: `evidence/00-STEP0-scenarios.txt`, `evidence/01-STEP1-scenarios.txt`.
 
 ## Apply Fineract patches locally
 

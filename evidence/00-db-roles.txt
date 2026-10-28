@@ -1,0 +1,20 @@
+                              List of roles
+  Role name  |                         Attributes                         
+-------------+------------------------------------------------------------
+ integration | 
+ mock_erp    | 
+ postgres    | 
+ root        | Superuser, Create role, Create DB, Replication, Bypass RLS
+
+                                                  List of databases
+   Name   |  Owner   | Encoding | Locale Provider |  Collate   |   Ctype    | Locale | ICU Rules | Access privileges 
+----------+----------+----------+-----------------+------------+------------+--------+-----------+-------------------
+ mock_erp | mock_erp | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | 
+(1 row)
+
+                                                     List of databases
+    Name     |    Owner    | Encoding | Locale Provider |  Collate   |   Ctype    | Locale | ICU Rules | Access privileges 
+-------------+-------------+----------+-----------------+------------+------------+--------+-----------+-------------------
+ integration | integration | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | 
+(1 row)
+

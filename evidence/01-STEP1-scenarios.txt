@@ -1,0 +1,74 @@
+Step 1 — Part B Fineract setup script
+=====================================
+Date: 2026-10-29
+
+Deliverables
+------------
+- scripts/fineract_setup_part_b.py
+- scripts/fineract_setup/ (client + setup helpers)
+- scripts/tests/test_fineract_setup_part_b.py (7 unit tests)
+- evidence/01-part-b-setup.json
+
+Prereq
+------
+CoA GLs in Fineract (Integration POST /sync/coa). Script fails fast if glCodes
+1000/1100/1200/2100/4001/4002/5001 are missing (F1.2).
+
+Happy scenarios
+---------------
+H1.1 Office Kigali + currency RWF
+  Action: PYTHONPATH=scripts python scripts/fineract_setup_part_b.py
+  Expected: Office Kigali (externalId=KIGALI); RWF in selected currencies
+  Result: PASS — office_id=2; currencies ["RWF","USD"]
+
+H1.2 Product SME Asset Finance
+  Expected: 18% p.a., 12 monthly repayments, cash accounting + GL map
+  Result: PASS — product_id=1, externalId=SME-ASSET-FINANCE, rate 18, repayments 12
+
+H1.3 Least-privilege API user
+  Expected: role assessment-api (not Super user); user assessment.api can login
+  Result: PASS — role_id=3; user_id=4; api_user_login ok (sees Kigali office)
+
+H1.4 Idempotent re-run
+  Action: run script twice
+  Expected: steps report exists / ok; no duplicate office/product/user
+  Result: PASS — second run all exists/ok (see steps in 01-part-b-setup.json)
+
+Failure / fix scenarios
+-----------------------
+F1.1 Fineract not up
+  Symptom: connection errors in wait_until_ready
+  Fix: wait/retry (built into client); start compose
+  Result: Covered by wait_until_ready; not forced-failed in this run
+
+F1.2 GL mapping account missing
+  Symptom: resolve_gl_accounts status=failed with missing_gl_codes + sync hint
+  Fix: POST /sync/coa then re-run
+  Result: Unit test covers; live run used existing synced GLs
+
+F1.3 Duplicate office/product
+  Symptom: would 400 without lookup
+  Fix: create-or-get by name / externalId
+  Result: PASS on re-run (exists)
+
+F1.4 Wrong currency
+  Symptom: product not RWF → later loan failures
+  Fix: script enables RWF and sets product currencyCode=RWF; asserts RWF selected
+  Result: PASS
+
+F1.x (observed during implementation)
+  - shortName max length 4 → use SMEA
+  - incomeFromRecoveryAccountId mandatory for cash product on this build
+  - password policy: 12–50, complexity, no consecutive repeating chars
+  Documented in setup.py constants / product payload
+
+How to re-run
+-------------
+  curl -s -X POST http://localhost:8082/sync/coa -H 'X-Api-Key: integration-key'
+  cd fineract-assessment
+  . .venv/bin/activate
+  pip install -r scripts/requirements.txt
+  PYTHONPATH=scripts python scripts/fineract_setup_part_b.py --out evidence/01-part-b-setup.json
+  PYTHONPATH=scripts python -m pytest scripts/tests -q
+
+API user password lives in scripts/fineract_setup/setup.py (demo only).
