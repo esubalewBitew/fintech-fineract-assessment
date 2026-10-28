@@ -1,0 +1,75 @@
+From a7ad5725fa0d041d888fa8c8f043d4621addc0c3 Mon Sep 17 00:00:00 2001
+From: Esubalew Bitew <esubalewbitew13@gmail.com>
+Date: Wed, 28 Oct 2026 12:50:18 +0300
+Subject: [PATCH] liquibase: add external_reference to acc_gl_account
+
+---
+ .../db/changelog/tenant/changelog-tenant.xml  |  1 +
+ ...0270_add_gl_account_external_reference.xml | 44 +++++++++++++++++++
+ 2 files changed, 45 insertions(+)
+ create mode 100644 fineract-provider/src/main/resources/db/changelog/tenant/parts/0270_add_gl_account_external_reference.xml
+
+diff --git a/fineract-provider/src/main/resources/db/changelog/tenant/changelog-tenant.xml b/fineract-provider/src/main/resources/db/changelog/tenant/changelog-tenant.xml
+index 40a0163ce1..6a60f6f347 100644
+--- a/fineract-provider/src/main/resources/db/changelog/tenant/changelog-tenant.xml
++++ b/fineract-provider/src/main/resources/db/changelog/tenant/changelog-tenant.xml
+@@ -288,4 +288,5 @@
+     <include file="parts/0267_add_retained_earning_wc_report_global_configuration.xml" relativeToChangelogFile="true" />
+     <include file="parts/0268_add_payoff_schedule_preview_max_payoff_periods_configuration.xml" relativeToChangelogFile="true" />
+     <include file="parts/0269_add_payoff_schedule_preview_max_term_periods_configuration.xml" relativeToChangelogFile="true" />
++    <include file="parts/0270_add_gl_account_external_reference.xml" relativeToChangelogFile="true" />
+ </databaseChangeLog>
+diff --git a/fineract-provider/src/main/resources/db/changelog/tenant/parts/0270_add_gl_account_external_reference.xml b/fineract-provider/src/main/resources/db/changelog/tenant/parts/0270_add_gl_account_external_reference.xml
+new file mode 100644
+index 0000000000..e7789df2a9
+--- /dev/null
++++ b/fineract-provider/src/main/resources/db/changelog/tenant/parts/0270_add_gl_account_external_reference.xml
+@@ -0,0 +1,44 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!--
++    Licensed to the Apache Software Foundation (ASF) under one
++    or more contributor license agreements. See the NOTICE file
++    distributed with this work for additional information
++    regarding copyright ownership. The ASF licenses this file
++    to you under the Apache License, Version 2.0 (the
++    "License"); you may not use this file except in compliance
++    with the License. You may obtain a copy of the License at
++    http://www.apache.org/licenses/LICENSE-2.0
++    Unless required by applicable law or agreed to in writing,
++    software distributed under the License is distributed on an
++    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++    KIND, either express or implied. See the License for the
++    specific language governing permissions and limitations
++    under the License.
++
++-->
++<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
++                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
++    <changeSet id="0270-1" author="fineract">
++        <preConditions onFail="MARK_RAN">
++            <not>
++                <columnExists tableName="acc_gl_account" columnName="external_reference"/>
++            </not>
++        </preConditions>
++        <addColumn tableName="acc_gl_account">
++            <column name="external_reference" type="varchar(100)">
++                <constraints nullable="true"/>
++            </column>
++        </addColumn>
++    </changeSet>
++    <changeSet id="0270-2" author="fineract">
++        <preConditions onFail="MARK_RAN">
++            <not>
++                <indexExists tableName="acc_gl_account" indexName="uk_acc_gl_external_reference"/>
++            </not>
++        </preConditions>
++        <addUniqueConstraint tableName="acc_gl_account"
++                             columnNames="external_reference"
++                             constraintName="uk_acc_gl_external_reference"/>
++    </changeSet>
++</databaseChangeLog>
+\ No newline at end of file
+-- 
+2.50.1 (Apple Git-155)
+
