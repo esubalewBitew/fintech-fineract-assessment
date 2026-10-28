@@ -1,25 +1,31 @@
-Verification checklist — 2026-10-29
-===================================
+Verification checklist — 2026-10-29 (after clean compose + fixes)
+================================================================
 
 Item                                              Status
 ------------------------------------------------  --------
-1. Commits split                                  PASS (logical commits on main)
-1b. Working tree clean                            (re-check after this commit)
-1c. Pushed to origin                              check `git status -sb`
-2. DECISIONS.md NOT inside Fineract patches       PASS after patch 0002 strip
-3. App DB URLs not root in docker-compose.yml     PASS (mock_erp / integration)
-4. Clean docker compose down -v && up --build     RUN separately (Fineract rebuild long)
-5. integration-service pytest                     RUN
-5b. mock-erp pytest                               RUN
-6. Makefile with simulate-* targets               PASS (added; D/I/J/K stubs fail loudly)
-6b. evidence/ present                             PARTIAL (Step 0/1 only)
+1. Commits split                                  PASS
+1b. Working tree                                  check `git status` (local ahead; push pending)
+1c. Pushed                                        NO — local commits ahead of origin (push when ready)
+2. DECISIONS.md NOT inside Fineract patches       PASS (stripped from 0002; git am still applies)
+3. App DB URLs not root in docker-compose.yml     PASS (mock_erp / integration users)
+4. Clean docker compose down -v && up --build     PASS (patches applied; Fineract image rebuilt)
+4b. Fresh volume mounts 02-assessment-dbs.sh      PASS (fixed postgresql.yml mount)
+4c. mock_erp + integration owners after fresh DB  PASS (see 00-db-roles.txt)
+5. integration-service pytest                     PASS — 11 passed
+5b. mock-erp pytest                               PASS — 4 passed
+5c. scripts pytest                                PASS — 7 passed
+6. Makefile with simulate-*                       PASS (stubs fail loudly for D/I/J/K)
+6b. evidence/                                     PARTIAL — Step 0/1 only
+
+Services after fix
+------------------
+db healthy; fineract 200; mock-erp ok; integration-service ok
 
 THE FOUR RESULTS THAT MATTER MOST
 ---------------------------------
-D Lifecycle loan Closed + balances                FAIL — not implemented (GAPS Step 3)
-I 10 parallel disburse → 1 Fineract + 1 ERP       FAIL — not implemented (GAPS Step 7)
-J Fineract timeout → lookup by externalId         FAIL — not implemented (GAPS Step 8)
-K One reconcile report with all 4 outcomes        FAIL — engine exists; full seeded report not evidenced (GAPS Step 9)
+D Lifecycle loan Closed + balances                FAIL — not implemented
+I 10 parallel disburse → 1 Fineract + 1 ERP       FAIL — not implemented
+J Fineract timeout → lookup by externalId         FAIL — not implemented
+K One reconcile report with all 4 outcomes        FAIL — not evidenced end-to-end
 
-Honest bottom line: hygiene + Part B + middleware scaffold are in place.
-Hard proofs D/I/J/K are NOT done — do not treat assessment as complete.
+Bottom line: hygiene + Part B + scaffold verified. Assessment NOT complete until D/I/J/K have real evidence/.
