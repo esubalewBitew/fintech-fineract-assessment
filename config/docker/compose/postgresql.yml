@@ -23,6 +23,7 @@ services:
     image: postgres:18.3
     volumes:
       - ${PWD}/config/docker/postgresql/docker-entrypoint-initdb.d/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:Z,ro
+      - ${PWD}/config/docker/postgresql/docker-entrypoint-initdb.d/02-assessment-dbs.sh:/docker-entrypoint-initdb.d/02-assessment-dbs.sh:Z,ro
     restart: always
     env_file:
       - ${PWD}/config/docker/env/postgresql.env
