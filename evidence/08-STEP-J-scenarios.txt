@@ -1,0 +1,25 @@
+Step 8 / Part J — Fineract timeout → LOOKUP_BY_EXTERNAL_ID
+=========================================================
+Date: 2026-10-29
+Evidence: evidence/08-timeout-lookup.json + .txt
+Command: make simulate-timeout
+
+Mechanism
+---------
+1. POST /admin/fineract-fault {"mode":"timeout_after_write"}
+2. POST /loans/disburse — Fineract write succeeds; adapter raises FineractTimeoutError
+3. money._cbs_call_with_external_id_lookup:
+     GET /loans/external-id/{loan_reference}/transactions/external-id/{txn_ref}
+4. If found → continue ERP journal (COMPLETED) + fineract_recovery note
+5. If miss → NEEDS_RECONCILIATION — NEVER blind re-POST
+
+Happy recovery
+--------------
+H: timeout_after_write → LOOKUP_BY_EXTERNAL_ID string in response; state COMPLETED
+
+Failure
+-------
+Lookup miss → 502 + NEEDS_RECONCILIATION (unit test test_timeout_lookup.py)
+
+Log/marker line (in JSON recovery field):
+  LOOKUP_BY_EXTERNAL_ID: disburse timed out; recovered via /loans/external-id/.../transactions/external-id/...

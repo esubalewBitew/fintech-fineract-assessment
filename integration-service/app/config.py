@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     fineract_password: str = "password"
     fineract_tenant: str = "default"
     fineract_verify_ssl: bool = False
+    # none | timeout_after_write — one-shot fault for Part J evidence
+    fineract_fault_mode: str = "none"
+
+    default_office_id: int = 2  # Kigali after Part B
+    default_product_external_id: str = "SME-ASSET-FINANCE"
 
     default_rail: str = "offline"
 

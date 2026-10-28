@@ -7,12 +7,17 @@ FastAPI + SQLAlchemy + Postgres.
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/sync/coa` | A-sync CoA from Mock ERP → Fineract |
-| POST | `/loans/map` | Register loan_reference → fineract_loan_id |
-| POST | `/loans/disburse` | Rail → Fineract → ERP journal |
+| POST | `/clients` | Part C — create client (`externalId=client_uid`) |
+| POST | `/loans/apply` | Part C — apply loan (`externalId=loan_reference`) |
+| POST | `/loans/{ref}/approve` | Approve loan |
+| GET | `/loans/{ref}` | Status + balances snapshot |
+| POST | `/loans/map` | Admin escape hatch only |
+| POST | `/loans/disburse` | Rail → Fineract → ERP (timeout → LOOKUP_BY_EXTERNAL_ID) |
 | POST | `/loans/repay` | Rail → Fineract → ERP journal |
 | POST | `/transactions/reverse-repayment` | Undo repayment + reversing journal |
 | GET | `/reconcile/fineract-erp` | K reconciliation report |
 | GET | `/admin/recover` | J NEEDS_RECONCILIATION list |
+| POST | `/admin/fineract-fault` | Part J inject `timeout_after_write` |
 
 Auth: `X-Api-Key: integration-key`
 

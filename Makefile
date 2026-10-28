@@ -12,9 +12,9 @@ help:
 	@echo "  sync-coa                POST /sync/coa"
 	@echo "  setup-part-b            Part B Fineract bootstrap"
 	@echo "  simulate-coa            CoA sync evidence → evidence/11-coa-sync.json"
-	@echo "  simulate-lifecycle      Part D (loan → Closed) — NOT IMPLEMENTED YET"
-	@echo "  simulate-concurrency    Part I (10 parallel disburse → 1) — NOT IMPLEMENTED YET"
-	@echo "  simulate-timeout        Part J (externalId lookup) — NOT IMPLEMENTED YET"
+	@echo "  simulate-lifecycle      Part D → evidence/03-lifecycle.json"
+	@echo "  simulate-concurrency    Part I → evidence/07-concurrency.json"
+	@echo "  simulate-timeout        Part J → evidence/08-timeout-lookup.*"
 	@echo "  simulate-reconcile      Part K (4 outcomes) — NOT IMPLEMENTED YET"
 	@echo "  evidence                list evidence/"
 
@@ -48,19 +48,13 @@ simulate-coa: sync-coa
 	@echo "Wrote evidence/11-coa-sync.json"
 
 simulate-lifecycle:
-	@echo "FAIL: Part D not implemented — need client/loan create + close lifecycle"
-	@echo "See GAPS_PLAN.md Step 3. Expected evidence: evidence/03-lifecycle-closed.json"
-	@exit 1
+	PYTHONPATH=scripts python scripts/simulate_lifecycle_part_d.py
 
 simulate-concurrency:
-	@echo "FAIL: Part I not implemented — need 10 parallel disbursements → 1 Fineract + 1 ERP"
-	@echo "See GAPS_PLAN.md Step 7. Expected evidence: evidence/07-concurrency-disburse.json"
-	@exit 1
+	PYTHONPATH=scripts python scripts/simulate_concurrency_part_i.py
 
 simulate-timeout:
-	@echo "FAIL: Part J not implemented — need Fineract timeout + lookup by externalId (no blind retry)"
-	@echo "See GAPS_PLAN.md Step 8. Expected evidence: evidence/08-timeout-lookup.txt"
-	@exit 1
+	PYTHONPATH=scripts python scripts/simulate_timeout_part_j.py
 
 simulate-reconcile:
 	@echo "FAIL: Part K not fully evidenced — need one report with MATCHED/MISSING_IN_ERP/MISSING_IN_FINERACT/AMOUNT_MISMATCH"

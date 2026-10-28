@@ -1,0 +1,15 @@
+Step 2 / Part C — Service creates client + loan (prerequisite for D/I/J)
+=======================================================================
+Date: 2026-10-29
+
+APIs
+----
+POST /clients          {client_uid, firstname, lastname, ...}  → client_map
+POST /loans/apply      {loan_reference, client_uid, principal} → loan_map
+POST /loans/{ref}/approve
+GET  /loans/{ref}      snapshot status + balances
+POST /loans/map        admin escape hatch only
+
+Idempotent create-or-get by externalId / local map.
+
+Happy: H2.1–H2.4 exercised by lifecycle + concurrency scripts.

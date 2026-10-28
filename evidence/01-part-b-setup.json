@@ -8,13 +8,13 @@
     "USD"
   ],
   "gl_map": {
-    "fund_source": 2,
-    "loan_portfolio": 3,
-    "transfers_suspense": 4,
-    "interest_income": 9,
-    "fee_income": 8,
-    "write_off": 10,
-    "overpayment": 5
+    "fund_source": 1,
+    "loan_portfolio": 2,
+    "transfers_suspense": 3,
+    "interest_income": 8,
+    "fee_income": 7,
+    "write_off": 9,
+    "overpayment": 4
   },
   "api_user": {
     "username": "assessment.api",
@@ -45,40 +45,54 @@
       "status": "ok",
       "detail": {
         "gl_map": {
-          "fund_source": 2,
-          "loan_portfolio": 3,
-          "transfers_suspense": 4,
-          "interest_income": 9,
-          "fee_income": 8,
-          "write_off": 10,
-          "overpayment": 5
+          "fund_source": 1,
+          "loan_portfolio": 2,
+          "transfers_suspense": 3,
+          "interest_income": 8,
+          "fee_income": 7,
+          "write_off": 9,
+          "overpayment": 4
         },
         "by_code": {
-          "1000": 2,
-          "1100": 3,
-          "1200": 4,
-          "4002": 9,
-          "4001": 8,
-          "5001": 10,
-          "2100": 5
+          "1000": 1,
+          "1100": 2,
+          "1200": 3,
+          "4002": 8,
+          "4001": 7,
+          "5001": 9,
+          "2100": 4
         }
       }
     },
     {
       "step": "loan_product",
-      "status": "exists",
+      "status": "created",
       "detail": {
         "product_id": 1,
         "name": "SME Asset Finance",
-        "externalId": "SME-ASSET-FINANCE"
+        "externalId": "SME-ASSET-FINANCE",
+        "interestRatePerPeriod": 18,
+        "numberOfRepayments": 12,
+        "currencyCode": "RWF",
+        "accountingRule": "CASH",
+        "gl_map": {
+          "fund_source": 1,
+          "loan_portfolio": 2,
+          "transfers_suspense": 3,
+          "interest_income": 8,
+          "fee_income": 7,
+          "write_off": 9,
+          "overpayment": 4
+        }
       }
     },
     {
       "step": "role",
-      "status": "exists",
+      "status": "created",
       "detail": {
         "role_id": 3,
-        "name": "assessment-api"
+        "name": "assessment-api",
+        "permission_count": 25
       }
     },
     {

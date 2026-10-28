@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.adapters.fineract_fault import get_fault_mode, set_fault_mode
 from app.api.deps import get_cbs, get_coa, get_ledger, require_api_key
 from app.db.models import LoanMap
 from app.db.session import get_db
@@ -15,11 +16,34 @@ from app.ports.core_banking import CoreBankingPort
 from app.ports.coa_provider import CoAProviderPort
 from app.ports.ledger import LedgerPort
 from app.recovery.sweep import list_needs_reconciliation
-from app.usecases import money
+from app.usecases import money, onboarding
 from app.usecases.reconcile import reconcile_fineract_erp
 from app.usecases.sync_coa import sync_chart_of_accounts
 
 router = APIRouter()
+
+
+class ClientIn(BaseModel):
+    client_uid: str
+    firstname: str
+    lastname: str
+    office_id: Optional[int] = None
+    activation_date: Optional[date] = None
+
+
+class LoanApplyIn(BaseModel):
+    loan_reference: str
+    client_uid: str
+    principal: Decimal
+    product_id: Optional[int] = None
+    product_external_id: Optional[str] = None
+    submitted_on_date: Optional[date] = None
+    expected_disbursement_date: Optional[date] = None
+
+
+class LoanApproveIn(BaseModel):
+    approved_on_date: Optional[date] = None
+    expected_disbursement_date: Optional[date] = None
 
 
 class LoanMapIn(BaseModel):
@@ -45,6 +69,10 @@ class ReverseIn(BaseModel):
     transaction_date: Optional[date] = None
 
 
+class FaultIn(BaseModel):
+    mode: str  # none | timeout_after_write
+
+
 @router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "integration-service"}
@@ -60,8 +88,72 @@ def sync_coa(
     return {"count": len(results), "results": results}
 
 
+@router.post("/clients", dependencies=[Depends(require_api_key)])
+def create_client(
+    body: ClientIn,
+    db: Session = Depends(get_db),
+    cbs: CoreBankingPort = Depends(get_cbs),
+) -> dict:
+    return onboarding.create_or_get_client(
+        db,
+        cbs=cbs,
+        client_uid=body.client_uid,
+        firstname=body.firstname,
+        lastname=body.lastname,
+        office_id=body.office_id,
+        activation_date=(body.activation_date or date.today()).isoformat(),
+    )
+
+
+@router.post("/loans/apply", dependencies=[Depends(require_api_key)])
+def apply_loan(
+    body: LoanApplyIn,
+    db: Session = Depends(get_db),
+    cbs: CoreBankingPort = Depends(get_cbs),
+) -> dict:
+    today = date.today()
+    return onboarding.apply_or_get_loan(
+        db,
+        cbs=cbs,
+        loan_reference=body.loan_reference,
+        client_uid=body.client_uid,
+        principal=body.principal,
+        product_id=body.product_id,
+        product_external_id=body.product_external_id,
+        submitted_on_date=(body.submitted_on_date or today).isoformat(),
+        expected_disbursement_date=(body.expected_disbursement_date or today).isoformat(),
+    )
+
+
+@router.post("/loans/{loan_reference}/approve", dependencies=[Depends(require_api_key)])
+def approve_loan(
+    loan_reference: str,
+    body: LoanApproveIn,
+    db: Session = Depends(get_db),
+    cbs: CoreBankingPort = Depends(get_cbs),
+) -> dict:
+    today = date.today()
+    return onboarding.approve_loan(
+        db,
+        cbs=cbs,
+        loan_reference=loan_reference,
+        approved_on_date=(body.approved_on_date or today).isoformat(),
+        expected_disbursement_date=(body.expected_disbursement_date or today).isoformat(),
+    )
+
+
+@router.get("/loans/{loan_reference}", dependencies=[Depends(require_api_key)])
+def get_loan(
+    loan_reference: str,
+    db: Session = Depends(get_db),
+    cbs: CoreBankingPort = Depends(get_cbs),
+) -> dict:
+    return onboarding.loan_snapshot(db, cbs=cbs, loan_reference=loan_reference)
+
+
 @router.post("/loans/map", dependencies=[Depends(require_api_key)])
 def map_loan(body: LoanMapIn, db: Session = Depends(get_db)) -> dict:
+    """Admin escape hatch — primary path is POST /clients + /loans/apply."""
     existing = db.query(LoanMap).filter(LoanMap.loan_reference == body.loan_reference).first()
     if existing:
         existing.fineract_loan_id = body.fineract_loan_id
@@ -157,3 +249,15 @@ def reconcile(
 def recover(db: Session = Depends(get_db)) -> dict:
     rows = list_needs_reconciliation(db)
     return {"count": len(rows), "transactions": rows}
+
+
+@router.post("/admin/fineract-fault", dependencies=[Depends(require_api_key)])
+def fineract_fault(body: FaultIn) -> dict:
+    """Part J: inject one-shot timeout_after_write so disburse uses LOOKUP_BY_EXTERNAL_ID."""
+    try:
+        mode = set_fault_mode(body.mode)
+    except ValueError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"mode": mode, "current": get_fault_mode()}

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from decimal import Decimal
+from typing import Any, Optional
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -13,8 +15,46 @@ from app.domain.states import InvalidTransition, transition
 from app.idempotency.claim import claim_or_get, payload_hash
 from app.mapping import journal_mapping as jm
 from app.policy.currency import assert_allowed_currency
-from app.ports.core_banking import CoreBankingPort, CurrencyRejected
+from app.ports.core_banking import CoreBankingPort, CurrencyRejected, FineractTimeoutError
 from app.ports.ledger import LedgerPort
+
+logger = logging.getLogger(__name__)
+
+
+def _cbs_call_with_external_id_lookup(
+    cbs: CoreBankingPort,
+    *,
+    call_name: str,
+    loan_reference: str,
+    external_reference: str,
+    call,
+) -> tuple[dict[str, Any], Optional[str]]:
+    """Execute Fineract money call; on timeout LOOKUP by externalId — never blind retry POST."""
+    try:
+        return call(), None
+    except FineractTimeoutError as exc:
+        logger.warning(
+            "LOOKUP_BY_EXTERNAL_ID after %s timeout loan_ext=%s txn_ext=%s",
+            call_name,
+            exc.loan_external_id,
+            exc.txn_external_id,
+        )
+        found = cbs.get_loan_transaction_by_external_id(
+            loan_external_id=exc.loan_external_id,
+            txn_external_id=exc.txn_external_id,
+        )
+        if found:
+            return found, (
+                f"LOOKUP_BY_EXTERNAL_ID: {call_name} timed out; recovered via "
+                f"/loans/external-id/{exc.loan_external_id}/transactions/external-id/{exc.txn_external_id}"
+            )
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"{call_name} timed out and LOOKUP_BY_EXTERNAL_ID found nothing "
+                f"(loan={exc.loan_external_id} txn={exc.txn_external_id}); marked for recovery — no blind retry"
+            ),
+        ) from exc
 
 
 def _leg(db: Session, txn: IntegrationTransaction, leg_type: str, provider: str) -> TransactionLeg:
@@ -119,14 +159,31 @@ def disburse(
         _set_state(txn, "FINERACT_PENDING")
         cbs_leg = _leg(db, txn, LegType.CORE_BANKING.value, "fineract")
         cbs_leg.attempts += 1
-        cbs_resp = cbs.disburse_loan(
-            loan_id=loan.fineract_loan_id,
-            amount=amount,
-            external_id=external_reference,
-            transaction_date=transaction_date,
+        try:
+            cbs_resp, lookup_note = _cbs_call_with_external_id_lookup(
+                cbs,
+                call_name="disburse",
+                loan_reference=loan_reference,
+                external_reference=external_reference,
+                call=lambda: cbs.disburse_loan(
+                    loan_id=loan.fineract_loan_id,
+                    amount=amount,
+                    external_id=external_reference,
+                    transaction_date=transaction_date,
+                    loan_external_id=loan_reference,
+                ),
+            )
+        except HTTPException:
+            cbs_leg.state = LegState.UNKNOWN.value
+            cbs_leg.last_error = "timeout; LOOKUP_BY_EXTERNAL_ID miss"
+            _set_state(txn, "NEEDS_RECONCILIATION")
+            db.commit()
+            raise
+        cbs_leg.provider_reference = str(
+            cbs_resp.get("resourceId") or cbs_resp.get("transactionId") or cbs_resp.get("id") or ""
         )
-        cbs_leg.provider_reference = str(cbs_resp.get("resourceId") or cbs_resp.get("transactionId") or "")
-        cbs_leg.response_json = json.dumps(cbs_resp, default=str)
+        note = {"response": cbs_resp, "recovery": lookup_note} if lookup_note else cbs_resp
+        cbs_leg.response_json = json.dumps(note, default=str)
         cbs_leg.state = LegState.CONFIRMED.value
         _set_state(txn, "FINERACT_DONE")
 
@@ -146,7 +203,12 @@ def disburse(
             loan.disbursed_txn_id = txn.id
 
         db.commit()
-        return {"integration_txn_id": txn.id, "external_reference": external_reference, "state": txn.state}
+        out = {"integration_txn_id": txn.id, "external_reference": external_reference, "state": txn.state}
+        if lookup_note:
+            out["fineract_recovery"] = lookup_note
+        return out
+    except HTTPException:
+        raise
     except InvalidTransition as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
@@ -227,14 +289,29 @@ def repay(
 
         _set_state(txn, "FINERACT_PENDING")
         cbs_leg = _leg(db, txn, LegType.CORE_BANKING.value, "fineract")
-        cbs_resp = cbs.repay_loan(
-            loan_id=loan.fineract_loan_id,
-            amount=amount,
-            external_id=external_reference,
-            transaction_date=transaction_date,
-        )
-        cbs_leg.provider_reference = str(cbs_resp.get("resourceId") or "")
-        cbs_leg.response_json = json.dumps(cbs_resp, default=str)
+        try:
+            cbs_resp, lookup_note = _cbs_call_with_external_id_lookup(
+                cbs,
+                call_name="repay",
+                loan_reference=loan_reference,
+                external_reference=external_reference,
+                call=lambda: cbs.repay_loan(
+                    loan_id=loan.fineract_loan_id,
+                    amount=amount,
+                    external_id=external_reference,
+                    transaction_date=transaction_date,
+                    loan_external_id=loan_reference,
+                ),
+            )
+        except HTTPException:
+            cbs_leg.state = LegState.UNKNOWN.value
+            cbs_leg.last_error = "timeout; LOOKUP_BY_EXTERNAL_ID miss"
+            _set_state(txn, "NEEDS_RECONCILIATION")
+            db.commit()
+            raise
+        cbs_leg.provider_reference = str(cbs_resp.get("resourceId") or cbs_resp.get("id") or "")
+        note = {"response": cbs_resp, "recovery": lookup_note} if lookup_note else cbs_resp
+        cbs_leg.response_json = json.dumps(note, default=str)
         cbs_leg.state = LegState.CONFIRMED.value
         _set_state(txn, "FINERACT_DONE")
 
@@ -256,7 +333,12 @@ def repay(
             led_leg.state = LegState.CONFIRMED.value
             _set_state(txn, "COMPLETED")
         db.commit()
-        return {"integration_txn_id": txn.id, "external_reference": external_reference, "state": txn.state}
+        out = {"integration_txn_id": txn.id, "external_reference": external_reference, "state": txn.state}
+        if lookup_note:
+            out["fineract_recovery"] = lookup_note
+        return out
+    except HTTPException:
+        raise
     except Exception as exc:  # noqa: BLE001
         txn.state = "NEEDS_RECONCILIATION"
         db.commit()

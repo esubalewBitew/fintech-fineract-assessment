@@ -1,0 +1,27 @@
+Step 3 / Part D — Lifecycle to Closed
+=====================================
+Date: 2026-10-29
+Evidence: evidence/03-lifecycle.json
+Command: make simulate-lifecycle
+
+Flow
+----
+POST /clients → POST /loans/apply → POST /loans/{ref}/approve
+→ POST /loans/disburse → 3 partial repayments → payoff rounds until outstanding 0
+→ final status Closed (obligations met)
+
+Happy
+-----
+H3.1 Apply — loan created with externalId = loan_reference
+H3.2 Approve — Approved
+H3.3 Disburse — Active; principal outstanding ≈ disbursed
+H3.4 Repayments 1–3 — outstanding decreases each step (logged in JSON)
+H3.5 Payoff — Closed (obligations met); totalOutstanding 0
+H3.6 Snapshot — 03-lifecycle.json contains every step + balances
+
+Failures / fixes observed
+-------------------------
+F3.x Interest accrues so principal-only payoff left residual →
+  Fix: read totalOutstanding and repay that (loop) until 0/Closed.
+
+Prereq: Part B product + CoA sync; integration service up.

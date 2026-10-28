@@ -1,0 +1,14 @@
+{
+  "loan_reference": "LOAN-J-61a46c3d",
+  "external_reference": "DISB-J-61a46c3d",
+  "http_status": 200,
+  "response": {
+    "integration_txn_id": "01M62CFYER5AY02AKRTA57R2HT",
+    "external_reference": "DISB-J-61a46c3d",
+    "state": "COMPLETED",
+    "fineract_recovery": "LOOKUP_BY_EXTERNAL_ID: disburse timed out; recovered via /loans/external-id/LOAN-J-61a46c3d/transactions/external-id/DISB-J-61a46c3d"
+  },
+  "lookup_used": true,
+  "no_blind_retry": true,
+  "pass": true
+}

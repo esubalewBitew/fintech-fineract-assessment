@@ -1,0 +1,81 @@
+{
+  "parallel_identical_ref": {
+    "external_reference": "DISB-PAR-287ab670",
+    "loan_reference": "LOAN-CONC-287ab670a",
+    "workers": 10,
+    "http_status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "integration_txn_ids": [
+      "01M62CFZS5CM0FB1BB964KPHD5"
+    ],
+    "states": [
+      "RECEIVED",
+      "RECEIVED",
+      "RECEIVED",
+      "RECEIVED",
+      "RECEIVED",
+      "RECEIVED",
+      "RECEIVED",
+      "RECEIVED",
+      "RECEIVED",
+      "COMPLETED"
+    ],
+    "erp_journal_count": 1,
+    "completed_count": 1,
+    "idempotent_replay_count": 9,
+    "proof_one_fineract_one_erp": true
+  },
+  "sequential_four_loans": [
+    {
+      "loan_reference": "LOAN-CONC-287ab670s0",
+      "external_reference": "DISB-SEQ-287ab670-0",
+      "status_code": 200,
+      "body": {
+        "integration_txn_id": "01M62CG143J4ZBPM9N8B4KRNYG",
+        "external_reference": "DISB-SEQ-287ab670-0",
+        "state": "COMPLETED"
+      }
+    },
+    {
+      "loan_reference": "LOAN-CONC-287ab670s1",
+      "external_reference": "DISB-SEQ-287ab670-1",
+      "status_code": 200,
+      "body": {
+        "integration_txn_id": "01M62CG282CYKMEZ7MKP7W7FWA",
+        "external_reference": "DISB-SEQ-287ab670-1",
+        "state": "COMPLETED"
+      }
+    },
+    {
+      "loan_reference": "LOAN-CONC-287ab670s2",
+      "external_reference": "DISB-SEQ-287ab670-2",
+      "status_code": 200,
+      "body": {
+        "integration_txn_id": "01M62CG3BFRK6GEBP2BRX0XBK1",
+        "external_reference": "DISB-SEQ-287ab670-2",
+        "state": "COMPLETED"
+      }
+    },
+    {
+      "loan_reference": "LOAN-CONC-287ab670s3",
+      "external_reference": "DISB-SEQ-287ab670-3",
+      "status_code": 200,
+      "body": {
+        "integration_txn_id": "01M62CG4FVPQAMX7THYRZ28DXQ",
+        "external_reference": "DISB-SEQ-287ab670-3",
+        "state": "COMPLETED"
+      }
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,6 @@
+Part J — Fineract timeout → lookup by externalId
+pass=True
+http_status=200
+state=COMPLETED
+recovery=LOOKUP_BY_EXTERNAL_ID: disburse timed out; recovered via /loans/external-id/LOAN-J-61a46c3d/transactions/external-id/DISB-J-61a46c3d
+Rule: never blind re-POST disburse after timeout; LOOKUP_BY_EXTERNAL_ID first.

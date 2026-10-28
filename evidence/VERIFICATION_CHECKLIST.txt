@@ -1,31 +1,23 @@
-Verification checklist — 2026-10-29 (after clean compose + fixes)
-================================================================
+Verification checklist — 2026-10-29 (after D / I / J)
+====================================================
 
-Item                                              Status
-------------------------------------------------  --------
-1. Commits split                                  PASS
-1b. Working tree                                  check `git status` (local ahead; push pending)
-1c. Pushed                                        NO — local commits ahead of origin (push when ready)
-2. DECISIONS.md NOT inside Fineract patches       PASS (stripped from 0002; git am still applies)
-3. App DB URLs not root in docker-compose.yml     PASS (mock_erp / integration users)
-4. Clean docker compose down -v && up --build     PASS (patches applied; Fineract image rebuilt)
-4b. Fresh volume mounts 02-assessment-dbs.sh      PASS (fixed postgresql.yml mount)
-4c. mock_erp + integration owners after fresh DB  PASS (see 00-db-roles.txt)
-5. integration-service pytest                     PASS — 11 passed
-5b. mock-erp pytest                               PASS — 4 passed
-5c. scripts pytest                                PASS — 7 passed
-6. Makefile with simulate-*                       PASS (stubs fail loudly for D/I/J/K)
-6b. evidence/                                     PARTIAL — Step 0/1 only
-
-Services after fix
+Hygiene / scaffold
 ------------------
-db healthy; fineract 200; mock-erp ok; integration-service ok
+Commits split / DECISIONS out of patch / dedicated DB owners / tests   PASS
+Makefile simulate-*                                                    PASS
 
-THE FOUR RESULTS THAT MATTER MOST
----------------------------------
-D Lifecycle loan Closed + balances                FAIL — not implemented
-I 10 parallel disburse → 1 Fineract + 1 ERP       FAIL — not implemented
-J Fineract timeout → lookup by externalId         FAIL — not implemented
-K One reconcile report with all 4 outcomes        FAIL — not evidenced end-to-end
+THE FOUR RESULTS (D I J done; K still open)
+-------------------------------------------
+D Lifecycle → Closed (obligations met), balances each step             PASS
+   evidence/03-lifecycle.json + 03-STEP-D-scenarios.txt
+I 10 parallel identical disburse → 1 txn + 1 ERP journal               PASS
+   evidence/07-concurrency.json + 07-STEP-I-scenarios.txt
+J Timeout → LOOKUP_BY_EXTERNAL_ID (no blind retry)                     PASS
+   evidence/08-timeout-lookup.json/.txt + 08-STEP-J-scenarios.txt
+K One reconcile report with all 4 outcomes                             NOT DONE
 
-Bottom line: hygiene + Part B + scaffold verified. Assessment NOT complete until D/I/J/K have real evidence/.
+Commands
+--------
+make simulate-lifecycle
+make simulate-concurrency
+make simulate-timeout

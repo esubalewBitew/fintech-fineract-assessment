@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import hashlib
 import json
-from typing import Any
+from typing import Any, Optional, Tuple
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -20,12 +22,12 @@ def claim_or_get(
     operation_type: str,
     external_reference: str,
     payload: dict[str, Any],
-    loan_reference: str | None,
+    loan_reference: Optional[str],
     amount: Any,
     currency: str,
     rail: str,
-    correlation_id: str | None,
-) -> tuple[IntegrationTransaction, bool]:
+    correlation_id: Optional[str],
+) -> Tuple[IntegrationTransaction, bool]:
     """Returns (txn, created). If same hash exists → replay. Different hash → IntegrityError/conflict handled by caller."""
     digest = payload_hash(payload)
     existing = (

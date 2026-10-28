@@ -58,7 +58,7 @@ services:
       mock-erp:
         condition: service_started
       fineract:
-        condition: service_started
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg2://integration:integration_secret@db:5432/integration
       API_KEY: integration-key

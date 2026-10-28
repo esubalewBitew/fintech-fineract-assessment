@@ -1,0 +1,170 @@
+{
+  "client_uid": "CLI-LIFE-dc1007f4",
+  "loan_reference": "LOAN-LIFE-dc1007f4",
+  "principal": "1000000",
+  "final_status": "Closed (obligations met)",
+  "final_totalOutstanding": 0.0,
+  "closed_ok": true,
+  "steps": [
+    {
+      "step": "create_client",
+      "response": {
+        "client_uid": "CLI-LIFE-dc1007f4",
+        "fineract_client_id": 4,
+        "status": "created"
+      }
+    },
+    {
+      "step": "apply",
+      "response": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "client_uid": "CLI-LIFE-dc1007f4",
+        "product_id": 1,
+        "status": "created"
+      }
+    },
+    {
+      "step": "approve",
+      "response": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "status": "Approved",
+        "approve_response": {
+          "officeId": 2,
+          "clientId": 4,
+          "loanId": 2,
+          "resourceId": 2,
+          "changes": {
+            "expectedDisbursementDate": [
+              2026,
+              10,
+              29
+            ],
+            "dateFormat": "yyyy-MM-dd",
+            "approvedOnDate": "2026-10-29",
+            "locale": "en",
+            "status": {
+              "id": 200,
+              "code": "loanStatusType.approved",
+              "value": "Approved",
+              "pendingApproval": false,
+              "waitingForDisbursal": true,
+              "active": false,
+              "closedObligationsMet": false,
+              "closedWrittenOff": false,
+              "closedRescheduled": false,
+              "closed": false,
+              "overpaid": false
+            }
+          },
+          "resourceExternalId": "LOAN-LIFE-dc1007f4"
+        }
+      }
+    },
+    {
+      "step": "snapshot_after_approve",
+      "loan": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "status": "Approved",
+        "principal": null,
+        "principalOutstanding": null,
+        "totalOutstanding": null,
+        "totalRepayment": null
+      }
+    },
+    {
+      "step": "disburse",
+      "response": {
+        "integration_txn_id": "01M62CFWHHVN786XNBA9VR6VV2",
+        "external_reference": "DISB-dc1007f4",
+        "state": "COMPLETED"
+      }
+    },
+    {
+      "step": "snapshot_after_disburse",
+      "loan": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "status": "Active",
+        "principal": null,
+        "principalOutstanding": 1000000.0,
+        "totalOutstanding": 1100161.0,
+        "totalRepayment": 0.0
+      }
+    },
+    {
+      "step": "repayment_1",
+      "amount": "200000",
+      "response": {
+        "integration_txn_id": "01M62CFWNV2X1Z07ZA22QX02N3",
+        "external_reference": "REPAY-dc1007f4-1",
+        "state": "COMPLETED"
+      },
+      "loan": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "status": "Active",
+        "principal": null,
+        "principalOutstanding": 841532.0,
+        "totalOutstanding": 900161.0,
+        "totalRepayment": 200000.0
+      }
+    },
+    {
+      "step": "repayment_2",
+      "amount": "200000",
+      "response": {
+        "integration_txn_id": "01M62CFWWK4H1S3RDYP9EGZ9JS",
+        "external_reference": "REPAY-dc1007f4-2",
+        "state": "COMPLETED"
+      },
+      "loan": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "status": "Active",
+        "principal": null,
+        "principalOutstanding": 663324.0,
+        "totalOutstanding": 700161.0,
+        "totalRepayment": 400000.0
+      }
+    },
+    {
+      "step": "repayment_3",
+      "amount": "200000",
+      "response": {
+        "integration_txn_id": "01M62CFWZ6YTVN7N7MTTHGT1G0",
+        "external_reference": "REPAY-dc1007f4-3",
+        "state": "COMPLETED"
+      },
+      "loan": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "status": "Active",
+        "principal": null,
+        "principalOutstanding": 480233.0,
+        "totalOutstanding": 500161.0,
+        "totalRepayment": 600000.0
+      }
+    },
+    {
+      "step": "payoff_round_1",
+      "amount": "500161.0",
+      "response": {
+        "integration_txn_id": "01M62CFX2Q4SGAEFAE16HX1JAV",
+        "external_reference": "REPAY-dc1007f4-payoff-1",
+        "state": "COMPLETED"
+      },
+      "loan": {
+        "loan_reference": "LOAN-LIFE-dc1007f4",
+        "fineract_loan_id": 2,
+        "status": "Closed (obligations met)",
+        "principal": null,
+        "principalOutstanding": 0.0,
+        "totalOutstanding": 0.0,
+        "totalRepayment": 1100161.0
+      }
+    }
+  ]
+}

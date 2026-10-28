@@ -1,0 +1,26 @@
+Step 7 / Part I — Concurrency
+=============================
+Date: 2026-10-29
+Evidence: evidence/07-concurrency.json
+Command: make simulate-concurrency
+
+Critical proof (reviewer)
+-------------------------
+10 parallel POST /loans/disburse with the SAME external_reference
+→ exactly 1 integration_txn_id
+→ exactly 1 ERP journal for that ref
+→ one COMPLETED; others idempotent replay (same txn id)
+
+Also: 4 sequential disbursements on different loans → 4 COMPLETED.
+
+Happy
+-----
+H7.2/H7.4 Parallel identical ref — single book (see JSON proof_one_fineract_one_erp=true)
+H7.1 Four sequential different loans — all COMPLETED
+
+Failure / design
+----------------
+F7.1 Without UNIQUE(op, external_reference) → duplicates
+  Fix: claim_or_get + DB unique; IntegrityError → get existing
+
+Run: make simulate-concurrency
