@@ -1,7 +1,7 @@
 From a7ad5725fa0d041d888fa8c8f043d4621addc0c3 Mon Sep 17 00:00:00 2001
 From: Esubalew Bitew <esubalewbitew13@gmail.com>
 Date: Wed, 28 Oct 2026 12:50:18 +0300
-Subject: [PATCH] liquibase: add external_reference to acc_gl_account
+Subject: [PATCH 1/2] liquibase: add external_reference to acc_gl_account
 
 ---
  .../db/changelog/tenant/changelog-tenant.xml  |  1 +
