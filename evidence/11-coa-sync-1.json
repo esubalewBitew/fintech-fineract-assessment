@@ -1,0 +1,85 @@
+{
+  "count": 10,
+  "results": [
+    {
+      "external_reference": "ERP-CASH",
+      "code": "1000",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 1
+    },
+    {
+      "external_reference": "ERP-LOAN-PORT",
+      "code": "1100",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 2
+    },
+    {
+      "external_reference": "ERP-INT-REC",
+      "code": "1200",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 3
+    },
+    {
+      "external_reference": "ERP-USD-CASH",
+      "code": "1900",
+      "currency": "USD",
+      "source_system": "mock-erp",
+      "status": "skipped_currency",
+      "detail": "currency USD rejected; only RWF allowed"
+    },
+    {
+      "external_reference": "ERP-OVERPAY",
+      "code": "2100",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 4
+    },
+    {
+      "external_reference": "ERP-CLIENT-DEP",
+      "code": "2200",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 5
+    },
+    {
+      "external_reference": "ERP-EQUITY",
+      "code": "3000",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 6
+    },
+    {
+      "external_reference": "ERP-FEE-INC",
+      "code": "4001",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 7
+    },
+    {
+      "external_reference": "ERP-INT-INC",
+      "code": "4002",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 8
+    },
+    {
+      "external_reference": "ERP-OP-EXP",
+      "code": "5001",
+      "currency": "RWF",
+      "source_system": "mock-erp",
+      "status": "already_mapped",
+      "fineract_gl_id": 9
+    }
+  ]
+}

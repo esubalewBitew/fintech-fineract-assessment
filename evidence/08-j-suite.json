@@ -1,0 +1,61 @@
+{
+  "run_id": "7d1df803",
+  "cases": {
+    "j2_erp_down_after_fineract": {
+      "external_reference": "DISB-J-ERPDOWN-7d1df803",
+      "http_status": 502,
+      "response": {
+        "error": {
+          "code": "upstream_error",
+          "message": "disburse failed: Server error '503 Service Unavailable' for url 'http://mock-erp:8081/journal-entries'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503",
+          "correlation_id": "6ff06305-f14c-4e12-9b75-482856172579"
+        }
+      },
+      "in_recover_list": true,
+      "erp_journal_count_before_recover": 0,
+      "pass": true
+    },
+    "j3_restart_recover": {
+      "recover_response": {
+        "count": 1,
+        "results": [
+          {
+            "integration_txn_id": "01M63MVJ0VG2SDZM8PMGJ1DA3S",
+            "external_reference": "DISB-J-ERPDOWN-7d1df803",
+            "operation_type": "DISBURSEMENT",
+            "before_state": "NEEDS_RECONCILIATION",
+            "action": "erp_posted",
+            "http_status": 201,
+            "after_state": "COMPLETED"
+          }
+        ]
+      },
+      "recovered_row": {
+        "integration_txn_id": "01M63MVJ0VG2SDZM8PMGJ1DA3S",
+        "external_reference": "DISB-J-ERPDOWN-7d1df803",
+        "operation_type": "DISBURSEMENT",
+        "before_state": "NEEDS_RECONCILIATION",
+        "action": "erp_posted",
+        "http_status": 201,
+        "after_state": "COMPLETED"
+      },
+      "erp_journal_count_after": 1,
+      "pass": true
+    },
+    "j4_fineract_down": {
+      "external_reference": "DISB-J-FINDOWN-7d1df803",
+      "http_status": 502,
+      "response": {
+        "error": {
+          "code": "upstream_error",
+          "message": "disburse failed: simulated Fineract down (fault mode=down)",
+          "correlation_id": "fa95b5ed-5353-4f25-b432-87937ec0be5f"
+        }
+      },
+      "erp_journal_count": 0,
+      "pass": true
+    }
+  },
+  "note": "j1 timeout\u2192LOOKUP_BY_EXTERNAL_ID: see evidence/08-timeout-lookup.json (make simulate-timeout)",
+  "pass": true
+}

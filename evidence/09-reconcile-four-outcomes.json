@@ -1,0 +1,286 @@
+{
+  "seed": {
+    "run_id": "ffac436b",
+    "refs": {
+      "MATCHED": "K-SEED-MATCH-ffac436b",
+      "MISSING_IN_ERP": "K-SEED-MISS-ERP-ffac436b",
+      "MISSING_IN_FINERACT": "K-SEED-MISS-FIN-ffac436b",
+      "AMOUNT_MISMATCH": "K-SEED-MISMATCH-ffac436b"
+    },
+    "cases": {
+      "MATCHED": {
+        "method": "POST /loans/disburse",
+        "loan_reference": "LOAN-K-ffac436bm",
+        "response": {
+          "integration_txn_id": "01M63MVPCX7QTQMYZC0DB17THG",
+          "external_reference": "K-SEED-MATCH-ffac436b",
+          "state": "COMPLETED"
+        }
+      },
+      "MISSING_IN_ERP": {
+        "method": "SQL integration_transaction + CORE_BANKING CONFIRMED (no ERP journal)",
+        "integration_txn_id": "11bd6a83bdbc4544bf59ec1e57"
+      },
+      "MISSING_IN_FINERACT": {
+        "method": "POST mock-erp /journal-entries only",
+        "erp": {
+          "status_code": 201,
+          "body": {
+            "id": 23,
+            "external_reference": "K-SEED-MISS-FIN-ffac436b",
+            "entry_date": "2026-10-29",
+            "description": "Part K seed K-SEED-MISS-FIN-ffac436b",
+            "source_system": "seed-k",
+            "reverses_external_reference": null,
+            "payload_hash": "c0bd4b3e468cc6c7cd4cf5e7b90db4eeeb90cd4e29092178cf26bb2237b3c753",
+            "created_at": "2026-10-29T10:56:28.876131Z",
+            "lines": [
+              {
+                "account_external_reference": "ERP-LOAN-PORT",
+                "account_code": "1100",
+                "debit": "100000.00",
+                "credit": "0.00"
+              },
+              {
+                "account_external_reference": "ERP-CASH",
+                "account_code": "1000",
+                "debit": "0.00",
+                "credit": "100000.00"
+              }
+            ],
+            "total_debit": "100000.00",
+            "total_credit": "100000.00"
+          }
+        }
+      },
+      "AMOUNT_MISMATCH": {
+        "method": "SQL left amount 100000 + ERP journal total_debit 50000",
+        "integration_txn_id": "8e4a53998aaa4f8c83f43b511a",
+        "erp": {
+          "status_code": 201,
+          "body": {
+            "id": 24,
+            "external_reference": "K-SEED-MISMATCH-ffac436b",
+            "entry_date": "2026-10-29",
+            "description": "Part K seed K-SEED-MISMATCH-ffac436b",
+            "source_system": "seed-k",
+            "reverses_external_reference": null,
+            "payload_hash": "cbd7a5dfdd65b03dc02a263a08766d60db5be2e1722b4161ddec885194d7f284",
+            "created_at": "2026-10-29T10:56:29.002880Z",
+            "lines": [
+              {
+                "account_external_reference": "ERP-LOAN-PORT",
+                "account_code": "1100",
+                "debit": "50000.00",
+                "credit": "0.00"
+              },
+              {
+                "account_external_reference": "ERP-CASH",
+                "account_code": "1000",
+                "debit": "0.00",
+                "credit": "50000.00"
+              }
+            ],
+            "total_debit": "50000.00",
+            "total_credit": "50000.00"
+          }
+        }
+      }
+    }
+  },
+  "report": {
+    "count": 26,
+    "results": [
+      {
+        "external_reference": "DISB-F-REPLAY-72af061a",
+        "outcome": "MATCHED",
+        "fineract_amount": "300000.00",
+        "erp_amount": "300000.00"
+      },
+      {
+        "external_reference": "DISB-J-61a46c3d",
+        "outcome": "MATCHED",
+        "fineract_amount": "750000.00",
+        "erp_amount": "750000.00"
+      },
+      {
+        "external_reference": "DISB-J-ERPDOWN-7d1df803",
+        "outcome": "MATCHED",
+        "fineract_amount": "400000.00",
+        "erp_amount": "400000.00"
+      },
+      {
+        "external_reference": "DISB-PAR-287ab670",
+        "outcome": "MATCHED",
+        "fineract_amount": "500000.00",
+        "erp_amount": "500000.00"
+      },
+      {
+        "external_reference": "DISB-SEQ-287ab670-0",
+        "outcome": "MATCHED",
+        "fineract_amount": "500000.00",
+        "erp_amount": "500000.00"
+      },
+      {
+        "external_reference": "DISB-SEQ-287ab670-1",
+        "outcome": "MATCHED",
+        "fineract_amount": "500000.00",
+        "erp_amount": "500000.00"
+      },
+      {
+        "external_reference": "DISB-SEQ-287ab670-2",
+        "outcome": "MATCHED",
+        "fineract_amount": "500000.00",
+        "erp_amount": "500000.00"
+      },
+      {
+        "external_reference": "DISB-SEQ-287ab670-3",
+        "outcome": "MATCHED",
+        "fineract_amount": "500000.00",
+        "erp_amount": "500000.00"
+      },
+      {
+        "external_reference": "DISB-dc1007f4",
+        "outcome": "MATCHED",
+        "fineract_amount": "1000000.00",
+        "erp_amount": "1000000.00"
+      },
+      {
+        "external_reference": "DISB-f6f84eb0",
+        "outcome": "MATCHED",
+        "fineract_amount": "1000000.00",
+        "erp_amount": "1000000.00"
+      },
+      {
+        "external_reference": "K-SEED-MATCH-7d47bb27",
+        "outcome": "MATCHED",
+        "fineract_amount": "100000.00",
+        "erp_amount": "100000.00"
+      },
+      {
+        "external_reference": "K-SEED-MATCH-ffac436b",
+        "outcome": "MATCHED",
+        "fineract_amount": "100000.00",
+        "erp_amount": "100000.00"
+      },
+      {
+        "external_reference": "K-SEED-MISMATCH-7d47bb27",
+        "outcome": "AMOUNT_MISMATCH",
+        "fineract_amount": "100000.00",
+        "erp_amount": "50000.00"
+      },
+      {
+        "external_reference": "K-SEED-MISMATCH-ffac436b",
+        "outcome": "AMOUNT_MISMATCH",
+        "fineract_amount": "100000.00",
+        "erp_amount": "50000.00"
+      },
+      {
+        "external_reference": "K-SEED-MISS-ERP-7d47bb27",
+        "outcome": "MISSING_IN_ERP",
+        "fineract_amount": "100000.00",
+        "erp_amount": null
+      },
+      {
+        "external_reference": "K-SEED-MISS-ERP-ffac436b",
+        "outcome": "MISSING_IN_ERP",
+        "fineract_amount": "100000.00",
+        "erp_amount": null
+      },
+      {
+        "external_reference": "K-SEED-MISS-FIN-7d47bb27",
+        "outcome": "MISSING_IN_FINERACT",
+        "fineract_amount": null,
+        "erp_amount": "100000.00"
+      },
+      {
+        "external_reference": "K-SEED-MISS-FIN-ffac436b",
+        "outcome": "MISSING_IN_FINERACT",
+        "fineract_amount": null,
+        "erp_amount": "100000.00"
+      },
+      {
+        "external_reference": "REPAY-dc1007f4-1",
+        "outcome": "MATCHED",
+        "fineract_amount": "200000.00",
+        "erp_amount": "200000.00"
+      },
+      {
+        "external_reference": "REPAY-dc1007f4-2",
+        "outcome": "MATCHED",
+        "fineract_amount": "200000.00",
+        "erp_amount": "200000.00"
+      },
+      {
+        "external_reference": "REPAY-dc1007f4-3",
+        "outcome": "MATCHED",
+        "fineract_amount": "200000.00",
+        "erp_amount": "200000.00"
+      },
+      {
+        "external_reference": "REPAY-dc1007f4-payoff-1",
+        "outcome": "MATCHED",
+        "fineract_amount": "500161.00",
+        "erp_amount": "500161.00"
+      },
+      {
+        "external_reference": "REPAY-f6f84eb0-1",
+        "outcome": "MATCHED",
+        "fineract_amount": "200000.00",
+        "erp_amount": "200000.00"
+      },
+      {
+        "external_reference": "REPAY-f6f84eb0-2",
+        "outcome": "MATCHED",
+        "fineract_amount": "200000.00",
+        "erp_amount": "200000.00"
+      },
+      {
+        "external_reference": "REPAY-f6f84eb0-3",
+        "outcome": "MATCHED",
+        "fineract_amount": "200000.00",
+        "erp_amount": "200000.00"
+      },
+      {
+        "external_reference": "REPAY-f6f84eb0-payoff",
+        "outcome": "MATCHED",
+        "fineract_amount": "400000.00",
+        "erp_amount": "400000.00"
+      }
+    ]
+  },
+  "seeded_rows": [
+    {
+      "external_reference": "K-SEED-MATCH-ffac436b",
+      "outcome": "MATCHED",
+      "fineract_amount": "100000.00",
+      "erp_amount": "100000.00"
+    },
+    {
+      "external_reference": "K-SEED-MISMATCH-ffac436b",
+      "outcome": "AMOUNT_MISMATCH",
+      "fineract_amount": "100000.00",
+      "erp_amount": "50000.00"
+    },
+    {
+      "external_reference": "K-SEED-MISS-ERP-ffac436b",
+      "outcome": "MISSING_IN_ERP",
+      "fineract_amount": "100000.00",
+      "erp_amount": null
+    },
+    {
+      "external_reference": "K-SEED-MISS-FIN-ffac436b",
+      "outcome": "MISSING_IN_FINERACT",
+      "fineract_amount": null,
+      "erp_amount": "100000.00"
+    }
+  ],
+  "outcomes_found": [
+    "AMOUNT_MISMATCH",
+    "MATCHED",
+    "MISSING_IN_ERP",
+    "MISSING_IN_FINERACT"
+  ],
+  "mismatches": [],
+  "pass": true
+}

@@ -1,0 +1,20 @@
+Step 8 / Part J — Failure suite (beyond timeout lookup)
+=======================================================
+Date: 2026-10-29
+Evidence: evidence/08-j-suite.json
+Also: evidence/08-timeout-lookup.json (make simulate-timeout) = j1 LOOKUP_BY_EXTERNAL_ID
+
+Command: make simulate-j-suite
+
+Happy / recovery
+----------------
+j2 ERP down after Fineract write → NEEDS_RECONCILIATION; no ERP journal; listed on GET /admin/recover
+j3 POST /admin/recover → posts ERP journal; after_state COMPLETED; 1 journal for ref
+j4 Fineract fault=down → HTTP error; not COMPLETED; no ERP journal invented
+
+j1 (separate): timeout_after_write → LOOKUP_BY_EXTERNAL_ID → COMPLETED (no blind retry)
+
+Failure design
+--------------
+F8.2 Blind retry after timeout → duplicate — prevented by LOOKUP_BY_EXTERNAL_ID
+F8.3 ERP down after Fineract → NEEDS_RECON → recover when ERP up

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Header
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -15,12 +16,21 @@ from app.db.session import get_db
 from app.ports.core_banking import CoreBankingPort
 from app.ports.coa_provider import CoAProviderPort
 from app.ports.ledger import LedgerPort
-from app.recovery.sweep import list_needs_reconciliation
+from app.recovery.sweep import list_needs_reconciliation, recover_needs_reconciliation
 from app.usecases import money, onboarding
 from app.usecases.reconcile import reconcile_fineract_erp
 from app.usecases.sync_coa import sync_chart_of_accounts
 
 router = APIRouter()
+
+_TERMINAL = frozenset({"COMPLETED", "FAILED"})
+
+
+def _money_response(body: dict[str, Any]) -> JSONResponse | dict[str, Any]:
+    """Idempotent replay while still in-flight → 202; completed/failed → 200."""
+    if body.get("idempotent_replay") and body.get("state") not in _TERMINAL:
+        return JSONResponse(content=body, status_code=202)
+    return body
 
 
 class ClientIn(BaseModel):
@@ -70,7 +80,7 @@ class ReverseIn(BaseModel):
 
 
 class FaultIn(BaseModel):
-    mode: str  # none | timeout_after_write
+    mode: str  # none | timeout_after_write | down
 
 
 @router.get("/health")
@@ -177,18 +187,20 @@ def disburse_loan(
     cbs: CoreBankingPort = Depends(get_cbs),
     ledger: LedgerPort = Depends(get_ledger),
     x_correlation_id: Optional[str] = Header(default=None),
-) -> dict:
-    return money.disburse(
-        db,
-        cbs=cbs,
-        ledger=ledger,
-        external_reference=body.external_reference,
-        loan_reference=body.loan_reference,
-        amount=body.amount,
-        currency=body.currency,
-        transaction_date=(body.transaction_date or date.today()).isoformat(),
-        rail_name=body.rail,
-        correlation_id=x_correlation_id,
+):
+    return _money_response(
+        money.disburse(
+            db,
+            cbs=cbs,
+            ledger=ledger,
+            external_reference=body.external_reference,
+            loan_reference=body.loan_reference,
+            amount=body.amount,
+            currency=body.currency,
+            transaction_date=(body.transaction_date or date.today()).isoformat(),
+            rail_name=body.rail,
+            correlation_id=x_correlation_id,
+        )
     )
 
 
@@ -199,20 +211,22 @@ def repay_loan(
     cbs: CoreBankingPort = Depends(get_cbs),
     ledger: LedgerPort = Depends(get_ledger),
     x_correlation_id: Optional[str] = Header(default=None),
-) -> dict:
-    return money.repay(
-        db,
-        cbs=cbs,
-        ledger=ledger,
-        external_reference=body.external_reference,
-        loan_reference=body.loan_reference,
-        amount=body.amount,
-        currency=body.currency,
-        transaction_date=(body.transaction_date or date.today()).isoformat(),
-        principal=body.principal,
-        interest=body.interest,
-        rail_name=body.rail,
-        correlation_id=x_correlation_id,
+):
+    return _money_response(
+        money.repay(
+            db,
+            cbs=cbs,
+            ledger=ledger,
+            external_reference=body.external_reference,
+            loan_reference=body.loan_reference,
+            amount=body.amount,
+            currency=body.currency,
+            transaction_date=(body.transaction_date or date.today()).isoformat(),
+            principal=body.principal,
+            interest=body.interest,
+            rail_name=body.rail,
+            correlation_id=x_correlation_id,
+        )
     )
 
 
@@ -223,15 +237,17 @@ def reverse_repayment(
     cbs: CoreBankingPort = Depends(get_cbs),
     ledger: LedgerPort = Depends(get_ledger),
     x_correlation_id: Optional[str] = Header(default=None),
-) -> dict:
-    return money.reverse_repayment(
-        db,
-        cbs=cbs,
-        ledger=ledger,
-        external_reference=body.external_reference,
-        original_external_reference=body.original_external_reference,
-        transaction_date=(body.transaction_date or date.today()).isoformat(),
-        correlation_id=x_correlation_id,
+):
+    return _money_response(
+        money.reverse_repayment(
+            db,
+            cbs=cbs,
+            ledger=ledger,
+            external_reference=body.external_reference,
+            original_external_reference=body.original_external_reference,
+            transaction_date=(body.transaction_date or date.today()).isoformat(),
+            correlation_id=x_correlation_id,
+        )
     )
 
 
@@ -246,14 +262,21 @@ def reconcile(
 
 
 @router.get("/admin/recover", dependencies=[Depends(require_api_key)])
-def recover(db: Session = Depends(get_db)) -> dict:
+def recover_list(db: Session = Depends(get_db)) -> dict:
     rows = list_needs_reconciliation(db)
     return {"count": len(rows), "transactions": rows}
 
 
+@router.post("/admin/recover", dependencies=[Depends(require_api_key)])
+def recover_run(db: Session = Depends(get_db), ledger: LedgerPort = Depends(get_ledger)) -> dict:
+    """Part J restart recovery: post missing ERP journals for NEEDS_RECONCILIATION + CBS CONFIRMED."""
+    results = recover_needs_reconciliation(db, ledger)
+    return {"count": len(results), "results": results}
+
+
 @router.post("/admin/fineract-fault", dependencies=[Depends(require_api_key)])
 def fineract_fault(body: FaultIn) -> dict:
-    """Part J: inject one-shot timeout_after_write so disburse uses LOOKUP_BY_EXTERNAL_ID."""
+    """Part J: inject timeout_after_write (LOOKUP_BY_EXTERNAL_ID) or down (no CBS write)."""
     try:
         mode = set_fault_mode(body.mode)
     except ValueError as exc:

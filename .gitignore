@@ -5,8 +5,12 @@ __pycache__/
 .env
 *.egg-info/
 
-# Keep only DECISIONS.md and README.md tracked; local working notes stay untracked
+# Keep submission docs tracked; local working notes (INTERVIEW_*, GAPS_*, FEATURES_*) stay untracked
 *.md
 !DECISIONS.md
 !README.md
 !**/README.md
+!API.md
+!SIMULATIONS.md
+!AI_USAGE.md
+!ARCHITECTURE.md

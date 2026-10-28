@@ -58,6 +58,23 @@ Creates (idempotent): office **Kigali**, currency **RWF**, product **SME Asset F
 
 Scenario notes: `evidence/00-STEP0-scenarios.txt`, `evidence/01-STEP1-scenarios.txt`.
 
+## Evidence simulations
+
+See `SIMULATIONS.md` and `API.md`. From this directory (stack up):
+
+```bash
+make test
+make simulate-lifecycle      # D
+make simulate-idempotency    # F
+make simulate-concurrency    # I
+make simulate-timeout        # J timeout→lookup
+make simulate-j-suite        # J ERP-down / recover / Fineract-down
+make simulate-reconcile      # K four outcomes
+make simulate-coa            # CoA double-run
+```
+
+Checklist: `evidence/VERIFICATION_CHECKLIST.txt`. AI disclosure: `AI_USAGE.md`.
+
 ## Apply Fineract patches locally
 
 ```bash

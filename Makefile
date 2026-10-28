@@ -1,6 +1,7 @@
 # Assessment helpers — run from fineract-assessment/
 .PHONY: help up down ps test test-integration test-mock-erp setup-part-b sync-coa \
-	simulate-coa simulate-lifecycle simulate-concurrency simulate-timeout simulate-reconcile evidence
+	simulate-coa simulate-lifecycle simulate-concurrency simulate-timeout simulate-reconcile \
+	simulate-j-suite simulate-idempotency evidence
 
 COMPOSE ?= docker compose
 INT_KEY ?= integration-key
@@ -11,11 +12,13 @@ help:
 	@echo "  test                    unit tests (integration + mock-erp + scripts)"
 	@echo "  sync-coa                POST /sync/coa"
 	@echo "  setup-part-b            Part B Fineract bootstrap"
-	@echo "  simulate-coa            CoA sync evidence → evidence/11-coa-sync.json"
+	@echo "  simulate-coa            CoA double-run → evidence/11-coa-sync-*.json"
 	@echo "  simulate-lifecycle      Part D → evidence/03-lifecycle.json"
 	@echo "  simulate-concurrency    Part I → evidence/07-concurrency.json"
-	@echo "  simulate-timeout        Part J → evidence/08-timeout-lookup.*"
-	@echo "  simulate-reconcile      Part K (4 outcomes) — NOT IMPLEMENTED YET"
+	@echo "  simulate-timeout        Part J timeout→lookup → evidence/08-timeout-lookup.*"
+	@echo "  simulate-j-suite        Part J ERP-down + recover + Fineract-down → evidence/08-j-suite.json"
+	@echo "  simulate-idempotency    Part F matrix → evidence/05-idempotency.*"
+	@echo "  simulate-reconcile      Part K → evidence/09-reconcile-four-outcomes.json"
 	@echo "  evidence                list evidence/"
 
 up:
@@ -44,8 +47,8 @@ sync-coa:
 setup-part-b:
 	PYTHONPATH=scripts python scripts/fineract_setup_part_b.py --out evidence/01-part-b-setup.json
 
-simulate-coa: sync-coa
-	@echo "Wrote evidence/11-coa-sync.json"
+simulate-coa:
+	PYTHONPATH=scripts python scripts/simulate_coa_double.py
 
 simulate-lifecycle:
 	PYTHONPATH=scripts python scripts/simulate_lifecycle_part_d.py
@@ -56,10 +59,14 @@ simulate-concurrency:
 simulate-timeout:
 	PYTHONPATH=scripts python scripts/simulate_timeout_part_j.py
 
+simulate-j-suite:
+	PYTHONPATH=scripts python scripts/simulate_failures_part_j.py
+
+simulate-idempotency:
+	PYTHONPATH=scripts python scripts/simulate_idempotency_part_f.py
+
 simulate-reconcile:
-	@echo "FAIL: Part K not fully evidenced — need one report with MATCHED/MISSING_IN_ERP/MISSING_IN_FINERACT/AMOUNT_MISMATCH"
-	@echo "See GAPS_PLAN.md Step 9. Expected evidence: evidence/09-reconcile-four-outcomes.json"
-	@exit 1
+	PYTHONPATH=scripts python scripts/simulate_reconcile_part_k.py
 
 evidence:
 	@ls -la evidence/

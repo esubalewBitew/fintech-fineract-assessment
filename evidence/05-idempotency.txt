@@ -1,0 +1,6 @@
+Part F — Idempotency matrix
+pass=True
+H5.1 completed replay 200 same txn: True
+H5.3 payload mismatch 409: True
+H5.2 in-progress 202: True
+Also see Part I parallel identical ref (evidence/07-concurrency.json).

@@ -164,6 +164,9 @@ class FineractAdapter:
         r.raise_for_status()
         return r.json()
 
+    def _active_fault(self) -> str:
+        return self.fault_mode if self.fault_mode != "none" else get_fault_mode()
+
     def disburse_loan(
         self,
         *,
@@ -173,6 +176,8 @@ class FineractAdapter:
         transaction_date: str,
         loan_external_id: Optional[str] = None,
     ) -> dict[str, Any]:
+        if self._active_fault() == "down":
+            raise RuntimeError("simulated Fineract down (fault mode=down)")
         body = {
             "actualDisbursementDate": transaction_date,
             "transactionAmount": float(amount),
@@ -193,7 +198,7 @@ class FineractAdapter:
                 txn_external_id=external_id,
             ) from exc
 
-        active_fault = self.fault_mode if self.fault_mode != "none" else get_fault_mode()
+        active_fault = self._active_fault()
         if active_fault == "timeout_after_write" and r.status_code < 300:
             # One-shot: write succeeded; caller must LOOKUP BY externalId — never blind re-POST.
             self.fault_mode = "none"

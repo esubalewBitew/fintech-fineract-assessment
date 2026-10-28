@@ -1,0 +1,48 @@
+{
+  "run_id": "72af061a",
+  "cases": {
+    "H5.1_completed_replay": {
+      "first": {
+        "status": 200,
+        "body": {
+          "integration_txn_id": "01M63MVMMRY0THJTVV8QF2H2TN",
+          "external_reference": "DISB-F-REPLAY-72af061a",
+          "state": "COMPLETED"
+        }
+      },
+      "second": {
+        "status": 200,
+        "body": {
+          "integration_txn_id": "01M63MVMMRY0THJTVV8QF2H2TN",
+          "external_reference": "DISB-F-REPLAY-72af061a",
+          "state": "COMPLETED",
+          "idempotent_replay": true
+        }
+      },
+      "pass": true
+    },
+    "H5.3_payload_mismatch_409": {
+      "status": 409,
+      "body": {
+        "error": {
+          "code": "conflict",
+          "message": "idempotency conflict: same external_reference different payload",
+          "correlation_id": "f7d60796-fe48-49ca-a73c-ec76c3d13d46"
+        }
+      },
+      "pass": true
+    },
+    "H5.2_in_progress_202": {
+      "status": 202,
+      "body": {
+        "integration_txn_id": "0e7077eb993c415b99188732ae",
+        "external_reference": "DISB-F-PENDING-72af061a",
+        "state": "RAIL_PENDING",
+        "idempotent_replay": true
+      },
+      "seeded_txn_id": "0e7077eb993c415b99188732ae",
+      "pass": true
+    }
+  },
+  "pass": true
+}

@@ -1,0 +1,17 @@
+Step 5 / Part F — Idempotency matrix
+====================================
+Date: 2026-10-29
+Evidence: evidence/05-idempotency.json + 05-idempotency.txt
+Command: make simulate-idempotency
+
+Happy
+-----
+H5.1 Identical retry after COMPLETED → 200 + same integration_txn_id + idempotent_replay
+H5.2 Retry while RAIL_PENDING → 202 + current state
+H5.3 Same external_reference different payload → 409
+(H5.4/H5.5 concurrent identical → evidence/07-concurrency.json Part I)
+
+Failure design
+--------------
+F5.1 Missing UNIQUE(op, ref) → duplicates — claim_or_get + DB constraint
+F5.2 Returning 200 while pending → wrong client retry — map in-progress → 202

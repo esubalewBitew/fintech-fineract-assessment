@@ -1,0 +1,12 @@
+{
+  "run1_counts": {
+    "already_mapped": 9,
+    "skipped_currency": 1
+  },
+  "run2_counts": {
+    "already_mapped": 9,
+    "skipped_currency": 1
+  },
+  "pass": true,
+  "rule": "second sync must not create new GL mappings (already_mapped / skipped_currency)"
+}

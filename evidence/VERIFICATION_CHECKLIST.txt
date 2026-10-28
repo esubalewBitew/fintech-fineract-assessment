@@ -1,23 +1,33 @@
-Verification checklist — 2026-10-29 (after D / I / J)
-====================================================
+Verification checklist — 2026-10-29 (submission-oriented)
+=========================================================
 
 Hygiene / scaffold
 ------------------
 Commits split / DECISIONS out of patch / dedicated DB owners / tests   PASS
 Makefile simulate-*                                                    PASS
+API.md + SIMULATIONS.md + AI_USAGE.md tracked                          PASS
 
-THE FOUR RESULTS (D I J done; K still open)
--------------------------------------------
-D Lifecycle → Closed (obligations met), balances each step             PASS
-   evidence/03-lifecycle.json + 03-STEP-D-scenarios.txt
-I 10 parallel identical disburse → 1 txn + 1 ERP journal               PASS
-   evidence/07-concurrency.json + 07-STEP-I-scenarios.txt
-J Timeout → LOOKUP_BY_EXTERNAL_ID (no blind retry)                     PASS
-   evidence/08-timeout-lookup.json/.txt + 08-STEP-J-scenarios.txt
-K One reconcile report with all 4 outcomes                             NOT DONE
+THE FOUR RESULTS
+----------------
+D Lifecycle → Closed                                                   PASS  evidence/03-*
+I 10 parallel identical → 1 txn + 1 ERP                                PASS  evidence/07-*
+J Timeout → LOOKUP_BY_EXTERNAL_ID                                      PASS  evidence/08-timeout-lookup.*
+K One reconcile report with all 4 outcomes                             PASS  evidence/09-*
+
+Polish pack
+-----------
+J ERP-down + recover + Fineract-down                                   PASS  evidence/08-j-suite.json
+F Idempotency 200 / 202 / 409                                          PASS  evidence/05-idempotency.*
+E Error envelope + correlation + OpenAPI /docs + API.md                PASS
+CoA double-run                                                         PASS  evidence/11-coa-sync-*.json
 
 Commands
 --------
 make simulate-lifecycle
 make simulate-concurrency
 make simulate-timeout
+make simulate-j-suite
+make simulate-idempotency
+make simulate-reconcile
+make simulate-coa
+make test

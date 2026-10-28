@@ -11,7 +11,7 @@ def get_fault_mode() -> str:
 
 def set_fault_mode(mode: str) -> str:
     global _FAULT_MODE
-    if mode not in ("none", "timeout_after_write"):
-        raise ValueError("mode must be none|timeout_after_write")
+    if mode not in ("none", "timeout_after_write", "down"):
+        raise ValueError("mode must be none|timeout_after_write|down")
     _FAULT_MODE = mode
     return _FAULT_MODE

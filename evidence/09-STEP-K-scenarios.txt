@@ -1,0 +1,36 @@
+Step 9 / Part K — Reconcile four outcomes
+=========================================
+Date: 2026-10-29
+Evidence: evidence/09-reconcile-four-outcomes.json
+Command: make simulate-reconcile
+Seed: scripts/seed_reconcile_k.py
+
+Join key: external_reference
+Left: integration_transaction (COMPLETED|NEEDS_RECONCILIATION) with CORE_BANKING leg CONFIRMED
+Right: mock-erp journal total_debit (reversing journals negate via reverses_external_reference)
+
+Happy
+-----
+H9.1 Seed four refs (prefix K-SEED-*)
+H9.2 GET /reconcile/fineract-erp contains all four outcomes for those refs
+H9.3 Reversal rule (documented): REVERSAL ops negate left amount; ERP journals with
+     reverses_external_reference negate total_debit. MATCHED for a reverse requires
+     both sides present with matching signed amounts. (Not separately seeded; engine
+     + usecases/reconcile.py lines handling reverse sign.)
+
+Seed methods
+------------
+MATCHED              POST /loans/disburse full path (same amount both sides)
+MISSING_IN_ERP       SQL insert txn + CBS CONFIRMED; no ERP journal
+MISSING_IN_FINERACT  POST mock-erp /journal-entries only
+AMOUNT_MISMATCH      SQL left amount 100000 + ERP journal total_debit 50000
+
+Failure / design
+----------------
+F9.1 Only MATCHED without seed → incomplete report
+  Fix: seed_reconcile_k.py engineers the three non-happy paths
+F9.2 Wrong join key → false MISSING_*
+  Fix: join only on external_reference (pass-through; see DECISIONS.md)
+
+Run: make simulate-reconcile
+Pass field in JSON must be true.
