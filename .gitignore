@@ -4,3 +4,9 @@ __pycache__/
 .pytest_cache/
 .env
 *.egg-info/
+
+# Keep only DECISIONS.md and README.md tracked; local working notes stay untracked
+*.md
+!DECISIONS.md
+!README.md
+!**/README.md
