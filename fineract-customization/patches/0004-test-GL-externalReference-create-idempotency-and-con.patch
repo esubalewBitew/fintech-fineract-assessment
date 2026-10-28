@@ -1,0 +1,97 @@
+From 8e168798fa3f183020ccb4aa56d4b86415ef6fbf Mon Sep 17 00:00:00 2001
+From: Esubalew Bitew <esubalewbitew13@gmail.com>
+Date: Wed, 28 Oct 2026 23:28:33 +0300
+Subject: [PATCH] test: GL externalReference create idempotency and conflict IT
+
+Co-authored-by: Cursor <cursoragent@cursor.com>
+---
+ .../accounting/GLAccountIntegrationTest.java  | 50 +++++++++++++++++++
+ 1 file changed, 50 insertions(+)
+
+diff --git a/integration-tests/src/test/java/org/apache/fineract/integrationtests/accounting/GLAccountIntegrationTest.java b/integration-tests/src/test/java/org/apache/fineract/integrationtests/accounting/GLAccountIntegrationTest.java
+index 1fc3f69a2f..62aa2f49cc 100644
+--- a/integration-tests/src/test/java/org/apache/fineract/integrationtests/accounting/GLAccountIntegrationTest.java
++++ b/integration-tests/src/test/java/org/apache/fineract/integrationtests/accounting/GLAccountIntegrationTest.java
+@@ -19,13 +19,16 @@
+ package org.apache.fineract.integrationtests.accounting;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertNotNull;
+ import static org.junit.jupiter.api.Assertions.assertThrows;
+ import static org.junit.jupiter.api.Assertions.assertTrue;
+ 
++import com.google.gson.JsonParser;
+ import java.math.BigDecimal;
+ import java.time.LocalDate;
+ import java.time.Month;
+ import java.util.Calendar;
++import java.util.UUID;
+ import org.apache.fineract.accounting.glaccount.domain.GLAccountType;
+ import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
+ import org.apache.fineract.client.models.GetGLAccountsResponse;
+@@ -36,6 +39,7 @@ import org.apache.fineract.client.models.PostLoanProductsRequest;
+ import org.apache.fineract.client.models.PutGLAccountsRequest;
+ import org.apache.fineract.client.models.SingleDebitOrCreditEntryCommand;
+ import org.apache.fineract.integrationtests.client.feign.FeignLoanTestBase;
++import org.apache.fineract.integrationtests.client.feign.helpers.FeignRawHttpHelper;
+ import org.apache.fineract.integrationtests.common.Utils;
+ import org.junit.jupiter.api.Test;
+ 
+@@ -122,8 +126,54 @@ public class GLAccountIntegrationTest extends FeignLoanTestBase {
+         });
+     }
+ 
++    /**
++     * Raw HTTP: generated PostGLAccountsRequest does not yet expose externalReference.
++     * Same externalReference + identical payload must be idempotent (same resourceId).
++     */
++    @Test
++    public void createWithExternalReferenceIsIdempotentForIdenticalPayload() {
++        final String externalReference = "ERP-GL-" + UUID.randomUUID();
++        final String glCode = Utils.uniqueRandomStringGenerator("GL", 6);
++        final String body = glAccountJson("Fee Income", glCode, externalReference, "idempotent");
++
++        final Long firstId = postGlAccountAndGetResourceId(body);
++        final Long secondId = postGlAccountAndGetResourceId(body);
++
++        assertNotNull(firstId);
++        assertEquals(firstId, secondId);
++    }
++
++    /**
++     * Same externalReference with a different business payload must return HTTP 409.
++     */
++    @Test
++    public void createWithExternalReferenceConflictsWhenPayloadDiffers() {
++        final String externalReference = "ERP-GL-" + UUID.randomUUID();
++        final String firstBody = glAccountJson("Fee Income", Utils.uniqueRandomStringGenerator("GL", 6), externalReference, "first");
++        final String secondBody = glAccountJson("Other Name", Utils.uniqueRandomStringGenerator("GL", 6), externalReference, "second");
++
++        assertNotNull(postGlAccountAndGetResourceId(firstBody));
++
++        final RuntimeException exception = assertThrows(RuntimeException.class, () -> FeignRawHttpHelper.post("/glaccounts", secondBody));
++        assertTrue(exception.getMessage().startsWith("HTTP 409 "), "Expected HTTP 409 but got: " + exception.getMessage());
++        assertTrue(exception.getMessage().contains("error.msg.glaccount.external.reference.conflict"),
++                "Expected conflict error code but got: " + exception.getMessage());
++    }
++
+     private PostGLAccountsResponse createGLAccount(String uniqueString) {
+         return accountHelper.createGLAccount(new PostGLAccountsRequest().type(GLAccountType.INCOME.getValue()).glCode(uniqueString)
+                 .manualEntriesAllowed(true).usage(1).description(uniqueString).name(uniqueString));
+     }
++
++    private static Long postGlAccountAndGetResourceId(final String body) {
++        final String response = FeignRawHttpHelper.post("/glaccounts", body);
++        return JsonParser.parseString(response).getAsJsonObject().get("resourceId").getAsLong();
++    }
++
++    private static String glAccountJson(final String name, final String glCode, final String externalReference,
++            final String description) {
++        return "{" + "\"name\":\"" + name + "\"," + "\"glCode\":\"" + glCode + "\"," + "\"type\":" + GLAccountType.INCOME.getValue() + ","
++                + "\"usage\":1," + "\"manualEntriesAllowed\":true," + "\"description\":\"" + description + "\","
++                + "\"externalReference\":\"" + externalReference + "\"" + "}";
++    }
+ }
+-- 
+2.50.1 (Apple Git-155)
+

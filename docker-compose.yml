@@ -1,0 +1,34 @@
+# Customized Fineract (assessment patches) + PostgreSQL.
+# Based on upstream docker-compose-postgresql.yml; image is built from fineract-customization/.
+# FOR TESTING / ASSESSMENT ONLY — NOT FOR PRODUCTION.
+
+services:
+  db:
+    extends:
+      file: ./config/docker/compose/postgresql.yml
+      service: postgresql
+
+  fineract:
+    build:
+      context: ./fineract-customization
+      dockerfile: Dockerfile
+    image: fineract:assessment
+    ports:
+      - "8443:8443"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./config/docker/env/fineract.env
+      - ./config/docker/env/fineract-common.env
+      - ./config/docker/env/fineract-postgresql.env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          'echo -e "Checking for the availability of Fineract server deployment"; while ! nc -z "localhost" 8443; do sleep 1; printf "-"; done; echo -e " >> Fineract server has started";',
+        ]
+      timeout: 1s
+      retries: 60
