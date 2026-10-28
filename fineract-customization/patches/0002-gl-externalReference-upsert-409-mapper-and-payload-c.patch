@@ -5,7 +5,6 @@ Subject: [PATCH 2/3] gl: externalReference upsert, 409 mapper, and payload
  comparator
 
 ---
- DECISIONS.md                                  |  9 ++
  .../glaccount/command/GLAccountCommand.java   |  5 +-
  ...untExternalReferenceConflictException.java | 29 +++++++
  ...ernalReferenceConflictExceptionMapper.java | 47 ++++++++++
@@ -20,8 +19,7 @@ Subject: [PATCH 2/3] gl: externalReference upsert, 409 mapper, and payload
  .../api/GLAccountJsonInputParams.java         |  3 +-
  .../glaccount/domain/GLAccount.java           |  7 +-
  .../glaccount/domain/GLAccountRepository.java |  1 +
- 15 files changed, 365 insertions(+), 32 deletions(-)
- create mode 100644 DECISIONS.md
+ 14 files changed, 356 insertions(+), 33 deletions(-)
  create mode 100644 fineract-accounting/src/main/java/org/apache/fineract/accounting/glaccount/exception/GLAccountExternalReferenceConflictException.java
  create mode 100644 fineract-accounting/src/main/java/org/apache/fineract/accounting/glaccount/exception/GLAccountExternalReferenceConflictExceptionMapper.java
  create mode 100644 fineract-accounting/src/main/java/org/apache/fineract/accounting/glaccount/exception/GLAccountExternalReferenceRaceException.java
@@ -30,21 +28,6 @@ Subject: [PATCH 2/3] gl: externalReference upsert, 409 mapper, and payload
  create mode 100644 fineract-accounting/src/test/java/org/apache/fineract/accounting/glaccount/exception/GLAccountExternalReferenceConflictExceptionMapperTest.java
  create mode 100644 fineract-accounting/src/test/java/org/apache/fineract/accounting/glaccount/service/GLAccountExternalReferencePayloadComparatorTest.java
 
-diff --git a/DECISIONS.md b/DECISIONS.md
-new file mode 100644
-index 0000000000..722a61cb6b
---- /dev/null
-+++ b/DECISIONS.md
-@@ -0,0 +1,9 @@
-+# externalReference on GL accounts
-+
-+`externalReference` is optional. Stock `POST /glaccounts` without it is unchanged.
-+
-+It is set only in `GLAccount.fromJson`. `GLAccount.update` does not read it, so it is immutable after create.
-+
-+The comparator checks `glCode`, `name`, `type`, `usage`, `parentId`, and `description`. It does not check `externalReference`, `disabled`, `manualEntriesAllowed`, or `tagId`. Fineract GL has no currency column. Non-RWF is rejected in the Integration Service.
-+
-+A concurrent create can pass the select and then hit `uk_acc_gl_external_reference`. PostgreSQL aborts that transaction. The insert runs in `insertNewGLAccount` (`REQUIRES_NEW`). The catch calls `GLAccountExternalReferenceConflictResolver` (`REQUIRES_NEW`) to re-read. Identical payload returns the existing id. A different payload throws `GLAccountExternalReferenceConflictException`, mapped to HTTP 409. This is not the command retry list.
 diff --git a/fineract-accounting/src/main/java/org/apache/fineract/accounting/glaccount/command/GLAccountCommand.java b/fineract-accounting/src/main/java/org/apache/fineract/accounting/glaccount/command/GLAccountCommand.java
 index f7b673e494..1074c7e165 100644
 --- a/fineract-accounting/src/main/java/org/apache/fineract/accounting/glaccount/command/GLAccountCommand.java

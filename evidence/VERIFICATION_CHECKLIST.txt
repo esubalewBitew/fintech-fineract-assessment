@@ -1,0 +1,25 @@
+Verification checklist — 2026-10-29
+===================================
+
+Item                                              Status
+------------------------------------------------  --------
+1. Commits split                                  PASS (logical commits on main)
+1b. Working tree clean                            (re-check after this commit)
+1c. Pushed to origin                              check `git status -sb`
+2. DECISIONS.md NOT inside Fineract patches       PASS after patch 0002 strip
+3. App DB URLs not root in docker-compose.yml     PASS (mock_erp / integration)
+4. Clean docker compose down -v && up --build     RUN separately (Fineract rebuild long)
+5. integration-service pytest                     RUN
+5b. mock-erp pytest                               RUN
+6. Makefile with simulate-* targets               PASS (added; D/I/J/K stubs fail loudly)
+6b. evidence/ present                             PARTIAL (Step 0/1 only)
+
+THE FOUR RESULTS THAT MATTER MOST
+---------------------------------
+D Lifecycle loan Closed + balances                FAIL — not implemented (GAPS Step 3)
+I 10 parallel disburse → 1 Fineract + 1 ERP       FAIL — not implemented (GAPS Step 7)
+J Fineract timeout → lookup by externalId         FAIL — not implemented (GAPS Step 8)
+K One reconcile report with all 4 outcomes        FAIL — engine exists; full seeded report not evidenced (GAPS Step 9)
+
+Honest bottom line: hygiene + Part B + middleware scaffold are in place.
+Hard proofs D/I/J/K are NOT done — do not treat assessment as complete.

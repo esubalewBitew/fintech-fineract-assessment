@@ -15,3 +15,13 @@ FastAPI + SQLAlchemy + Postgres.
 | GET | `/admin/recover` | J NEEDS_RECONCILIATION list |
 
 Auth: `X-Api-Key: integration-key`
+
+## Docs (on disk)
+
+| File | Content |
+|------|---------|
+| `docs/FLOWS.md` | Sync / disburse / repay / reverse / reconcile sequences |
+| `docs/MIDDLEWARE.md` | Ports, states, pass-through refs |
+| `docs/ERP_CONTRACT.md` | Mock ERP HTTP contract |
+| `../FEATURES_AND_FLOWS.md` | Full tomorrow cheat sheet |
+| `../QUICK_COMMANDS.txt` | Copy-paste curls |

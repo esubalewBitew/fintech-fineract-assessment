@@ -8,3 +8,7 @@ Standalone ledger: chart of accounts + journal entries. Never calls Fineract.
 - Admin faults: `POST /admin/faults` `{ "mode": "down|timeout_after_write|slow|none" }`
 
 Auth: header `X-Api-Key: mock-erp-key`
+
+Flows: `docs/FLOWS.md`  
+Contract: `../integration-service/docs/ERP_CONTRACT.md`  
+Master reference: `../FEATURES_AND_FLOWS.md`
