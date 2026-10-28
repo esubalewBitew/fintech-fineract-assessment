@@ -1,5 +1,4 @@
-# Customized Fineract (assessment patches) + PostgreSQL.
-# Based on upstream docker-compose-postgresql.yml; image is built from fineract-customization/.
+# Fineract (patched) + Mock ERP + Integration middleware.
 # FOR TESTING / ASSESSMENT ONLY — NOT FOR PRODUCTION.
 
 services:
@@ -32,3 +31,42 @@ services:
         ]
       timeout: 1s
       retries: 60
+
+  mock-erp:
+    build:
+      context: ./mock-erp
+    image: mock-erp:assessment
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://mock_erp:mock_erp_secret@db:5432/mock_erp
+      API_KEY: mock-erp-key
+      SEED_ON_STARTUP: "true"
+
+  integration-service:
+    build:
+      context: ./integration-service
+    image: integration-service:assessment
+    ports:
+      - "8082:8082"
+    depends_on:
+      db:
+        condition: service_healthy
+      mock-erp:
+        condition: service_started
+      fineract:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg2://integration:integration_secret@db:5432/integration
+      API_KEY: integration-key
+      MOCK_ERP_URL: http://mock-erp:8081
+      MOCK_ERP_API_KEY: mock-erp-key
+      FINERACT_BASE_URL: https://fineract:8443/fineract-provider/api/v1
+      FINERACT_USERNAME: mifos
+      FINERACT_PASSWORD: password
+      FINERACT_TENANT: default
+      FINERACT_VERIFY_SSL: "false"
+      ALLOWED_CURRENCY: RWF
