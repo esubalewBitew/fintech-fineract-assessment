@@ -3,7 +3,7 @@ Step 9 / Part K — Reconcile four outcomes
 Date: 2026-10-29
 Evidence: evidence/09-reconcile-four-outcomes.json
 Command: make simulate-reconcile
-Seed: scripts/seed_reconcile_k.py
+Seed: scripts/seed_reconcile_part_k.py
 
 Join key: external_reference
 Left: integration_transaction (COMPLETED|NEEDS_RECONCILIATION) with CORE_BANKING leg CONFIRMED
@@ -28,7 +28,7 @@ AMOUNT_MISMATCH      SQL left amount 100000 + ERP journal total_debit 50000
 Failure / design
 ----------------
 F9.1 Only MATCHED without seed → incomplete report
-  Fix: seed_reconcile_k.py engineers the three non-happy paths
+  Fix: seed_reconcile_part_k.py engineers the three non-happy paths
 F9.2 Wrong join key → false MISSING_*
   Fix: join only on external_reference (pass-through; see DECISIONS.md)
 

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 
-from seed_reconcile_k import seed
+from seed_reconcile_part_k import seed
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "evidence" / "09-reconcile-four-outcomes.json"

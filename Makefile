@@ -48,7 +48,7 @@ setup-part-b:
 	PYTHONPATH=scripts python scripts/fineract_setup_part_b.py --out evidence/01-part-b-setup.json
 
 simulate-coa:
-	PYTHONPATH=scripts python scripts/simulate_coa_double.py
+	PYTHONPATH=scripts python scripts/simulate_coa_sync.py
 
 simulate-lifecycle:
 	PYTHONPATH=scripts python scripts/simulate_lifecycle_part_d.py
@@ -57,10 +57,10 @@ simulate-concurrency:
 	PYTHONPATH=scripts python scripts/simulate_concurrency_part_i.py
 
 simulate-timeout:
-	PYTHONPATH=scripts python scripts/simulate_timeout_part_j.py
+	PYTHONPATH=scripts python scripts/simulate_timeout_lookup_part_j.py
 
 simulate-j-suite:
-	PYTHONPATH=scripts python scripts/simulate_failures_part_j.py
+	PYTHONPATH=scripts python scripts/simulate_fault_recovery_part_j.py
 
 simulate-idempotency:
 	PYTHONPATH=scripts python scripts/simulate_idempotency_part_f.py
