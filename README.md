@@ -9,10 +9,11 @@ Pinned Fineract tag: `1.16.1`
 | Path | Brief |
 |------|--------|
 | `fineract-customization/patches/` | CBS customization (A) |
-| `DECISIONS.md` | Design decisions |
+| `ARCHITECTURE.md` / `DECISIONS.md` / `API.md` | Design + API notes |
 | `mock-erp/` | G — ledger with journals |
 | `integration-service/` | A-sync, E–K middleware |
 | `scripts/fineract_setup_part_b.py` | Part B — office / RWF / product / API user |
+| `postman/` | `collection.json` + `environment.json` |
 | `evidence/` | Step scenario logs + JSON outputs |
 | `docker-compose.yml` | Postgres + Fineract + Mock ERP + Integration |
 

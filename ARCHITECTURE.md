@@ -1,11 +1,10 @@
 # Architecture — Integration middleware + Mock ERP
 
-Brief coverage: **A-sync** (CoA), **E/F/H/I** (loan money flows), **G** (Mock ERP ledger), **J** (recovery), **K** (reconciliation).
+Brief coverage: A-sync (CoA), E/F/H/I (loan money flows), G (Mock ERP ledger), J (recovery), K (reconciliation).
 
-Fineract config (office, RWF product, API user) is a separate brief section — not named “Part B” here.
+Fineract config (office, RWF product, API user) is brief Part B — separate from the middleware letters above.
 
-**Tomorrow start here:** `FEATURES_AND_FLOWS.md` (all features + flows + commands).  
-Also: `QUICK_COMMANDS.txt`, `GAPS_PLAN.md`, `evidence/`, `scripts/PART_B_FLOW.md`.
+See also: `DECISIONS.md`, `API.md`, `SIMULATIONS.md`, `evidence/`.
 
 ## Target picture
 
