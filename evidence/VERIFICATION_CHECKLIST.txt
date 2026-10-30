@@ -5,7 +5,7 @@ Hygiene / scaffold
 ------------------
 Commits split / DECISIONS out of patch / dedicated DB owners / tests   PASS
 Makefile simulate-*                                                    PASS
-API.md + SIMULATIONS.md + AI_USAGE.md tracked                          PASS
+API.md + SIMULATIONS.md + ARCHITECTURE.md tracked                      PASS
 
 THE FOUR RESULTS
 ----------------

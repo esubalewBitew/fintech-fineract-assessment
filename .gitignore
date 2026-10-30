@@ -12,5 +12,8 @@ __pycache__/
 !**/README.md
 !API.md
 !SIMULATIONS.md
-!AI_USAGE.md
 !ARCHITECTURE.md
+
+# Local-only notes (not submitted)
+AI_USAGE.md
+QUICK_COMMANDS.txt

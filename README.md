@@ -74,7 +74,7 @@ make simulate-reconcile      # K four outcomes
 make simulate-coa            # CoA double-run
 ```
 
-Checklist: `evidence/VERIFICATION_CHECKLIST.txt`. AI disclosure: `AI_USAGE.md`.
+Checklist: `evidence/VERIFICATION_CHECKLIST.txt`.
 
 Postman: `postman/collection.json` + `postman/environment.json` (see `postman/README.md`).
 
