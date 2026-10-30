@@ -75,6 +75,8 @@ make simulate-coa            # CoA double-run
 
 Checklist: `evidence/VERIFICATION_CHECKLIST.txt`. AI disclosure: `AI_USAGE.md`.
 
+Postman: `postman/collection.json` + `postman/environment.json` (see `postman/README.md`).
+
 ## Apply Fineract patches locally
 
 ```bash

@@ -1,0 +1,181 @@
+{
+  "id": "fintech-fineract-local-env",
+  "name": "local",
+  "values": [
+    {
+      "key": "integration_url",
+      "value": "http://localhost:8082",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "mock_erp_url",
+      "value": "http://localhost:8081",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "fineract_url",
+      "value": "https://localhost:8443/fineract-provider/api/v1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "integration_api_key",
+      "value": "integration-key",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "mock_erp_api_key",
+      "value": "mock-erp-key",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "fineract_user",
+      "value": "mifos",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "fineract_password",
+      "value": "password",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "fineract_tenant",
+      "value": "default",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "assessment_api_user",
+      "value": "assessment.api",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "assessment_api_password",
+      "value": "Th1sIsA#Pas9x",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "correlation_id",
+      "value": "postman-local-1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "run_id",
+      "value": "pm001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "today",
+      "value": "2026-10-29",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "client_uid",
+      "value": "CLI-PM-pm001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "loan_reference",
+      "value": "LOAN-PM-pm001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "disburse_ref",
+      "value": "DISB-PM-pm001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "repay_ref",
+      "value": "REPAY-PM-pm001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "reverse_ref",
+      "value": "REV-PM-pm001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "principal",
+      "value": "500000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "office_id",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "product_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "role_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "gl_fund_source_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "gl_loan_portfolio_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "gl_transfers_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "gl_interest_income_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "gl_fee_income_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "gl_write_off_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    },
+    {
+      "key": "gl_overpayment_id",
+      "value": "",
+      "type": "any",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

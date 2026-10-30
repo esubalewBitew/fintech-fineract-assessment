@@ -1,0 +1,1408 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-fintech-fineract-assessment",
+    "name": "fintech-fineract-assessment-scenarios",
+    "description": "Scenario folders: bootstrap, Mock ERP, Integration catalog, C/D, F, J, K, E.\nEnv: Local. Run Refresh run_id before money flows.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "integration_url",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "mock_erp_url",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "integration_api_key",
+      "value": "integration-key"
+    },
+    {
+      "key": "mock_erp_api_key",
+      "value": "mock-erp-key"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 \u2014 Bootstrap",
+      "item": [
+        {
+          "name": "Refresh run_id (set unique refs)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rid = Date.now().toString(36).slice(-6);",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "pm.environment.set('run_id', rid);",
+                  "pm.environment.set('today', today);",
+                  "pm.environment.set('client_uid', 'CLI-PM-' + rid);",
+                  "pm.environment.set('loan_reference', 'LOAN-PM-' + rid);",
+                  "pm.environment.set('disburse_ref', 'DISB-PM-' + rid);",
+                  "pm.environment.set('repay_ref', 'REPAY-PM-' + rid);",
+                  "pm.environment.set('reverse_ref', 'REV-PM-' + rid);",
+                  "pm.environment.set('correlation_id', 'corr-' + rid);",
+                  "pm.environment.set('principal', '500000');",
+                  "console.log('run_id=' + rid + ' loan=' + pm.environment.get('loan_reference'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('run_id set', function () {",
+                  "  pm.expect(pm.environment.get('run_id')).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{integration_url}}/health",
+            "description": "Generates unique `run_id`, client/loan/money refs, and today's date into the active environment."
+          }
+        },
+        {
+          "name": "Integration health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{integration_url}}/health"
+          }
+        },
+        {
+          "name": "Mock ERP health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{mock_erp_url}}/health"
+          }
+        },
+        {
+          "name": "Sync CoA (A-sync)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CoA sync 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.count).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/sync/coa",
+            "description": "ERP \u2192 Fineract GL sync. Run twice for Part A-sync idempotency (second = already_mapped)."
+          }
+        },
+        {
+          "name": "Sync CoA again (idempotent)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('second sync has no created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const results = pm.response.json().results || [];",
+                  "  const created = results.filter(r => r.status === 'created');",
+                  "  pm.expect(created.length).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/sync/coa"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 \u2014 Mock ERP APIs",
+      "item": [
+        {
+          "name": "List accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts"
+          }
+        },
+        {
+          "name": "Get account ERP-CASH",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts/ERP-CASH"
+          }
+        },
+        {
+          "name": "Create account (optional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-PM-{{run_id}}\",\n  \"code\": \"9{{run_id}}\",\n  \"name\": \"Postman test account\",\n  \"type\": \"ASSET\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\"\n}"
+            },
+            "url": "{{mock_erp_url}}/accounts"
+          }
+        },
+        {
+          "name": "Post balanced journal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"JRN-PM-{{run_id}}\",\n  \"entry_date\": \"{{today}}\",\n  \"description\": \"Postman balanced journal\",\n  \"source_system\": \"postman\",\n  \"lines\": [\n    { \"account_external_reference\": \"ERP-LOAN-PORT\", \"debit\": \"1000\", \"credit\": \"0\" },\n    { \"account_external_reference\": \"ERP-CASH\", \"debit\": \"0\", \"credit\": \"1000\" }\n  ]\n}"
+            },
+            "url": "{{mock_erp_url}}/journal-entries",
+            "description": "Expect 201. Replay same body \u2192 200/409 idempotent."
+          }
+        },
+        {
+          "name": "Post unbalanced journal (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unbalanced rejected', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([422, 400]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"JRN-UNBAL-{{run_id}}\",\n  \"entry_date\": \"{{today}}\",\n  \"lines\": [\n    { \"account_external_reference\": \"ERP-CASH\", \"debit\": \"100\", \"credit\": \"0\" },\n    { \"account_external_reference\": \"ERP-LOAN-PORT\", \"debit\": \"0\", \"credit\": \"50\" }\n  ]\n}"
+            },
+            "url": "{{mock_erp_url}}/journal-entries"
+          }
+        },
+        {
+          "name": "List journals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{mock_erp_url}}/journal-entries",
+              "host": [
+                "{{mock_erp_url}}"
+              ],
+              "path": [
+                "journal-entries"
+              ],
+              "query": [
+                {
+                  "key": "external_reference",
+                  "value": "{{disburse_ref}}",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get journal by ref",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": "{{mock_erp_url}}/journal-entries/{{disburse_ref}}"
+          }
+        },
+        {
+          "name": "ERP fault \u2192 none",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"none\"\n}"
+            },
+            "url": "{{mock_erp_url}}/admin/faults"
+          }
+        },
+        {
+          "name": "ERP fault \u2192 down",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"down\"\n}"
+            },
+            "url": "{{mock_erp_url}}/admin/faults",
+            "description": "Use before disburse for Part J ERP-down scenario. Always reset to none after."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 \u2014 Integration APIs (catalog)",
+      "item": [
+        {
+          "name": "POST /clients",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_uid\": \"{{client_uid}}\",\n  \"firstname\": \"Postman\",\n  \"lastname\": \"{{run_id}}\",\n  \"activation_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/clients"
+          }
+        },
+        {
+          "name": "POST /loans/apply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"client_uid\": \"{{client_uid}}\",\n  \"principal\": \"{{principal}}\",\n  \"submitted_on_date\": \"{{today}}\",\n  \"expected_disbursement_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/apply"
+          }
+        },
+        {
+          "name": "POST /loans/{ref}/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved_on_date\": \"{{today}}\",\n  \"expected_disbursement_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/{{loan_reference}}/approve"
+          }
+        },
+        {
+          "name": "GET /loans/{ref}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/loans/{{loan_reference}}"
+          }
+        },
+        {
+          "name": "POST /loans/map (escape hatch)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loan_reference\": \"LOAN-MAP-{{run_id}}\",\n  \"fineract_loan_id\": 1,\n  \"client_uid\": \"{{client_uid}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/map",
+            "description": "Manual map only \u2014 prefer /clients + /loans/apply."
+          }
+        },
+        {
+          "name": "POST /loans/disburse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.integration_txn_id) pm.environment.set('last_txn_id', j.integration_txn_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{disburse_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\",\n  \"rail\": \"offline\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse"
+          }
+        },
+        {
+          "name": "POST /loans/repay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{repay_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"50000\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\",\n  \"rail\": \"offline\"\n}"
+            },
+            "url": "{{integration_url}}/loans/repay"
+          }
+        },
+        {
+          "name": "POST /transactions/reverse-repayment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{reverse_ref}}\",\n  \"original_external_reference\": \"{{repay_ref}}\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/transactions/reverse-repayment"
+          }
+        },
+        {
+          "name": "GET /reconcile/fineract-erp",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/reconcile/fineract-erp"
+          }
+        },
+        {
+          "name": "GET /admin/recover (list)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/admin/recover"
+          }
+        },
+        {
+          "name": "POST /admin/recover (run)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/admin/recover"
+          }
+        },
+        {
+          "name": "POST /admin/fineract-fault none",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"none\"\n}"
+            },
+            "url": "{{integration_url}}/admin/fineract-fault"
+          }
+        },
+        {
+          "name": "POST /admin/fineract-fault timeout_after_write",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"timeout_after_write\"\n}"
+            },
+            "url": "{{integration_url}}/admin/fineract-fault"
+          }
+        },
+        {
+          "name": "POST /admin/fineract-fault down",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"down\"\n}"
+            },
+            "url": "{{integration_url}}/admin/fineract-fault"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 \u2014 Scenario C/D Happy path (client \u2192 disburse \u2192 repay)",
+      "description": "Run Refresh run_id first, then this folder top-to-bottom.",
+      "item": [
+        {
+          "name": "1 Sync CoA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/sync/coa"
+          }
+        },
+        {
+          "name": "2 Create client",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('client ok', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_uid\": \"{{client_uid}}\",\n  \"firstname\": \"Scenario\",\n  \"lastname\": \"CD\",\n  \"activation_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/clients"
+          }
+        },
+        {
+          "name": "3 Apply loan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"client_uid\": \"{{client_uid}}\",\n  \"principal\": \"{{principal}}\",\n  \"submitted_on_date\": \"{{today}}\",\n  \"expected_disbursement_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/apply"
+          }
+        },
+        {
+          "name": "4 Approve loan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved_on_date\": \"{{today}}\",\n  \"expected_disbursement_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/{{loan_reference}}/approve"
+          }
+        },
+        {
+          "name": "5 Disburse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('disburse COMPLETED', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.eql('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{disburse_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse"
+          }
+        },
+        {
+          "name": "6 Verify ERP journal for disburse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('one ERP journal', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const rows = pm.response.json();",
+                  "  pm.expect(rows.length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{mock_erp_url}}/journal-entries?external_reference={{disburse_ref}}",
+              "host": [
+                "{{mock_erp_url}}"
+              ],
+              "path": [
+                "journal-entries"
+              ],
+              "query": [
+                {
+                  "key": "external_reference",
+                  "value": "{{disburse_ref}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "7 Repay (partial)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{repay_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"100000\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/repay"
+          }
+        },
+        {
+          "name": "8 Loan snapshot",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/loans/{{loan_reference}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 \u2014 Scenario F Idempotency",
+      "description": "Requires a COMPLETED disburse first (run folder 03, or steps below after refresh).",
+      "item": [
+        {
+          "name": "F1 Replay same disburse (expect 200 replay)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('idempotent replay', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.idempotent_replay).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{disburse_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse"
+          }
+        },
+        {
+          "name": "F2 Same ref different amount (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('conflict 409', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.error || j.detail).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{disburse_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"500001\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse"
+          }
+        },
+        {
+          "name": "F3 Non-RWF disburse (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('currency rejected', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"DISB-USD-{{run_id}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"100\",\n  \"currency\": \"USD\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 \u2014 Scenario J Failures",
+      "description": "Order matters.",
+      "item": [
+        {
+          "name": "J1a Arm Fineract timeout_after_write",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"timeout_after_write\"\n}"
+            },
+            "url": "{{integration_url}}/admin/fineract-fault"
+          }
+        },
+        {
+          "name": "J1b Disburse (expect recovery LOOKUP)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('lookup recovery', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(String(j.fineract_recovery || '')).to.include('LOOKUP_BY_EXTERNAL_ID');",
+                  "  pm.expect(j.state).to.eql('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{disburse_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse",
+            "description": "Loan must already be approved and NOT yet disbursed. Use Refresh + folder 03 steps 2\u20134 first with a fresh run_id."
+          }
+        },
+        {
+          "name": "J1c Disarm Fineract fault",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"none\"\n}"
+            },
+            "url": "{{integration_url}}/admin/fineract-fault"
+          }
+        },
+        {
+          "name": "J2a Arm ERP down",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"down\"\n}"
+            },
+            "url": "{{mock_erp_url}}/admin/faults"
+          }
+        },
+        {
+          "name": "J2b Disburse while ERP down (expect NEEDS_RECON / 502)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('not invent COMPLETED without ERP', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 502]);",
+                  "  const j = pm.response.json();",
+                  "  if (j.state) pm.expect(j.state).to.not.eql('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"DISB-ERPDOWN-{{run_id}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse",
+            "description": "Needs a freshly approved undisbursed loan. Refresh + client/apply/approve first."
+          }
+        },
+        {
+          "name": "J2c List NEEDS_RECON",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/admin/recover"
+          }
+        },
+        {
+          "name": "J2d ERP fault \u2192 none",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"none\"\n}"
+            },
+            "url": "{{mock_erp_url}}/admin/faults"
+          }
+        },
+        {
+          "name": "J2e POST recover",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('recover ran', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().results).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/admin/recover"
+          }
+        },
+        {
+          "name": "J3a Arm Fineract down",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"down\"\n}"
+            },
+            "url": "{{integration_url}}/admin/fineract-fault"
+          }
+        },
+        {
+          "name": "J3b Disburse while Fineract down (expect error)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('fineract down fails', function () {",
+                  "  pm.expect(pm.response.code).to.be.at.least(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"DISB-FINDOWN-{{run_id}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            },
+            "url": "{{integration_url}}/loans/disburse"
+          }
+        },
+        {
+          "name": "J3c Disarm Fineract fault",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"none\"\n}"
+            },
+            "url": "{{integration_url}}/admin/fineract-fault"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 \u2014 Scenario K Reconcile",
+      "description": "Best proof: `make simulate-reconcile` (seeds all 4 outcomes).",
+      "item": [
+        {
+          "name": "GET reconcile report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('reconcile returns results', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.results).to.be.an('array');",
+                  "  console.log('outcomes sample', j.results.slice(0, 5).map(r => r.outcome));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              }
+            ],
+            "url": "{{integration_url}}/reconcile/fineract-erp"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 \u2014 Scenario E Auth / errors",
+      "item": [
+        {
+          "name": "Missing API key (expect 401 envelope)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 error envelope', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.error.code).to.eql('unauthorized');",
+                  "  pm.expect(pm.response.headers.get('X-Correlation-Id')).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/sync/coa"
+          }
+        },
+        {
+          "name": "Invalid body (expect 422 envelope)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 validation envelope', function () {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().error.code).to.eql('validation_error');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_uid\": 123\n}"
+            },
+            "url": "{{integration_url}}/clients"
+          }
+        },
+        {
+          "name": "Correlation echo on health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('correlation echoed', function () {",
+                  "  pm.expect(pm.response.headers.get('X-Correlation-Id')).to.eql(pm.environment.get('correlation_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 \u2014 Fineract (optional direct)",
+      "description": "",
+      "item": [
+        {
+          "name": "Fineract health (actuator)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "https://localhost:8443/fineract-provider/actuator/health"
+          }
+        },
+        {
+          "name": "List offices",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              }
+            ],
+            "url": "{{fineract_url}}/offices"
+          }
+        }
+      ]
+    }
+  ]
+}

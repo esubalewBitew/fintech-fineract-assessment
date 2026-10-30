@@ -14,3 +14,8 @@ Run from `fineract-assessment/` with the compose stack healthy.
 | `make simulate-coa` | A-sync double-run | `evidence/11-coa-sync-1.json`, `11-coa-sync-2.json` |
 
 Unit tests: `make test`
+
+## Postman
+
+Import `postman/collection.json`, `postman/scenarios.json`, and `postman/environment.json`.  
+See `postman/README.md`.

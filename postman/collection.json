@@ -1,0 +1,1404 @@
+{
+  "info": {
+    "name": "fintech-fineract-assessment",
+    "description": "ERP CoA \u2192 sync \u2192 Fineract Part B \u2192 client/loan \u2192 money \u2192 reconcile.\nEnv: Local. Disable SSL verify for https://localhost:8443. Run 00 Refresh first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 \u2014 Bootstrap",
+      "item": [
+        {
+          "name": "Refresh run_id (unique partner keys)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{integration_url}}/health",
+            "description": "Sets run_id, client_uid, loan_reference, disburse_ref, repay_ref, today, correlation_id, principal=500000"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rid = Date.now().toString(36).slice(-6);",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "pm.environment.set('run_id', rid);",
+                  "pm.environment.set('today', today);",
+                  "pm.environment.set('client_uid', 'CLI-PM-' + rid);",
+                  "pm.environment.set('loan_reference', 'LOAN-PM-' + rid);",
+                  "pm.environment.set('disburse_ref', 'DISB-PM-' + rid);",
+                  "pm.environment.set('repay_ref', 'REPAY-PM-' + rid);",
+                  "pm.environment.set('reverse_ref', 'REV-PM-' + rid);",
+                  "pm.environment.set('correlation_id', 'corr-' + rid);",
+                  "pm.environment.set('principal', '500000');",
+                  "console.log('refs', rid, pm.environment.get('loan_reference'), pm.environment.get('disburse_ref'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ok', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Integration health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{integration_url}}/health",
+            "description": ""
+          }
+        },
+        {
+          "name": "Mock ERP health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{mock_erp_url}}/health",
+            "description": ""
+          }
+        },
+        {
+          "name": "Fineract actuator health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "https://localhost:8443/fineract-provider/actuator/health",
+            "description": "Expect UP. Turn off SSL verification in Postman settings."
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 \u2014 Mock ERP: Chart of Accounts (GL)",
+      "description": "",
+      "item": [
+        {
+          "name": "Create ERP account ERP-CASH",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-CASH\",\n  \"code\": \"1000\",\n  \"name\": \"Cash at Bank\",\n  \"type\": \"ASSET\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Cash at Bank\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-LOAN-PORT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-LOAN-PORT\",\n  \"code\": \"1100\",\n  \"name\": \"Loan Portfolio\",\n  \"type\": \"ASSET\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Loan Portfolio\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-INT-REC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-INT-REC\",\n  \"code\": \"1200\",\n  \"name\": \"Interest Receivable\",\n  \"type\": \"ASSET\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Interest Receivable\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-OVERPAY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-OVERPAY\",\n  \"code\": \"2100\",\n  \"name\": \"Overpayment Liability\",\n  \"type\": \"LIABILITY\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Overpayment Liability\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-CLIENT-DEP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-CLIENT-DEP\",\n  \"code\": \"2200\",\n  \"name\": \"Client Deposits\",\n  \"type\": \"LIABILITY\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Client Deposits\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-EQUITY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-EQUITY\",\n  \"code\": \"3000\",\n  \"name\": \"Equity\",\n  \"type\": \"EQUITY\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Equity\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-FEE-INC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-FEE-INC\",\n  \"code\": \"4001\",\n  \"name\": \"Fee Income\",\n  \"type\": \"INCOME\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Fee Income\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-INT-INC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-INT-INC\",\n  \"code\": \"4002\",\n  \"name\": \"Interest Income\",\n  \"type\": \"INCOME\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Interest Income\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ERP account ERP-OP-EXP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "201 if new, 409 if already seeded on Mock ERP startup \u2014 both OK.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-OP-EXP\",\n  \"code\": \"5001\",\n  \"name\": \"Operating Expense\",\n  \"type\": \"EXPENSE\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\",\n  \"description\": \"Operating Expense\",\n  \"manual_entries_allowed\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created or exists', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List ERP accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": ""
+          }
+        },
+        {
+          "name": "Get ERP-CASH",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts/ERP-CASH",
+            "description": ""
+          }
+        },
+        {
+          "name": "Create optional extra ERP account (unique)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/accounts",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"ERP-PM-{{run_id}}\",\n  \"code\": \"9{{run_id}}\",\n  \"name\": \"Postman extra {{run_id}}\",\n  \"type\": \"ASSET\",\n  \"usage\": \"DETAIL\",\n  \"currency\": \"RWF\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 \u2014 Integration: Sync CoA (ERP \u2192 Fineract GL)",
+      "description": "",
+      "item": [
+        {
+          "name": "POST /sync/coa (1st run)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/sync/coa",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "console.log('statuses', (j.results||[]).map(r => r.status + ':' + r.external_reference));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sync/coa (2nd run idempotent)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/sync/coa",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no new creates', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "  const created = (pm.response.json().results||[]).filter(r => r.status==='created');",
+                  "  pm.expect(created.length).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 \u2014 Fineract Part B (office / currency / product)",
+      "description": "These call Fineract directly (same as make setup-part-b). Not exposed on Integration Service.",
+      "item": [
+        {
+          "name": "GET currencies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              }
+            ],
+            "url": "{{fineract_url}}/currencies",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT currencies (enable RWF keep USD)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{fineract_url}}/currencies",
+            "description": "Enables RWF for the tenant (Part B).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currencies\": [\n    \"RWF\",\n    \"USD\"\n  ]\n}"
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET offices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              }
+            ],
+            "url": "{{fineract_url}}/offices",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const offices = pm.response.json() || [];",
+                  "const kigali = offices.find(o => o.name==='Kigali' || o.externalId==='KIGALI');",
+                  "if (kigali) pm.environment.set('office_id', String(kigali.id));",
+                  "else if (offices[0]) pm.environment.set('office_id', String(offices[0].id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST office Kigali (skip if exists \u2192 use GET)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{fineract_url}}/offices",
+            "description": "If already exists Fineract may error \u2014 then use office_id from GET offices.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kigali\",\n  \"parentId\": 1,\n  \"externalId\": \"KIGALI\",\n  \"openingDate\": \"2010-01-01\",\n  \"dateFormat\": \"yyyy-MM-dd\",\n  \"locale\": \"en\"\n}"
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  const id = j.resourceId || j.officeId;",
+                  "  if (id) pm.environment.set('office_id', String(id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET glaccounts (resolve IDs for product)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              }
+            ],
+            "url": "{{fineract_url}}/glaccounts",
+            "description": "Must run AFTER CoA sync. Saves gl_*_id env vars used by product create.",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('listed', () => pm.response.to.have.status(200));",
+                  "const accounts = pm.response.json() || [];",
+                  "const byCode = {};",
+                  "accounts.forEach(a => { if (a.glCode) byCode[a.glCode] = a.id; });",
+                  "const map = {",
+                  "  '1000': 'gl_fund_source_id',",
+                  "  '1100': 'gl_loan_portfolio_id',",
+                  "  '1200': 'gl_transfers_id',",
+                  "  '4002': 'gl_interest_income_id',",
+                  "  '4001': 'gl_fee_income_id',",
+                  "  '5001': 'gl_write_off_id',",
+                  "  '2100': 'gl_overpayment_id'",
+                  "};",
+                  "Object.keys(map).forEach(code => {",
+                  "  if (byCode[code]) pm.environment.set(map[code], String(byCode[code]));",
+                  "});",
+                  "console.log('GL ids', Object.fromEntries(Object.values(map).map(k => [k, pm.environment.get(k)])));",
+                  "pm.test('required GLs present', function() {",
+                  "  pm.expect(pm.environment.get('gl_fund_source_id')).to.be.ok;",
+                  "  pm.expect(pm.environment.get('gl_loan_portfolio_id')).to.be.ok;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET loanproducts (find SME Asset Finance)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              }
+            ],
+            "url": "{{fineract_url}}/loanproducts",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const products = pm.response.json() || [];",
+                  "const p = products.find(x => x.name==='SME Asset Finance' || x.externalId==='SME-ASSET-FINANCE');",
+                  "if (p) { pm.environment.set('product_id', String(p.id)); console.log('existing product', p.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST loan product SME Asset Finance (create)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{fineract_url}}/loanproducts",
+            "description": "If product already exists, Fineract may reject \u2014 use GET then PUT update instead. Run GET glaccounts first so gl_*_id are set.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"SME Asset Finance\",\n  \"shortName\": \"SMEA\",\n  \"externalId\": \"SME-ASSET-FINANCE\",\n  \"currencyCode\": \"RWF\",\n  \"digitsAfterDecimal\": 0,\n  \"inMultiplesOf\": 1,\n  \"principal\": 1000000,\n  \"minPrincipal\": 100000,\n  \"maxPrincipal\": 50000000,\n  \"numberOfRepayments\": 12,\n  \"repaymentEvery\": 1,\n  \"repaymentFrequencyType\": 2,\n  \"interestRatePerPeriod\": 18,\n  \"interestRateFrequencyType\": 3,\n  \"amortizationType\": 1,\n  \"interestType\": 0,\n  \"interestCalculationPeriodType\": 1,\n  \"transactionProcessingStrategyCode\": \"mifos-standard-strategy\",\n  \"accountingRule\": 2,\n  \"isInterestRecalculationEnabled\": false,\n  \"daysInYearType\": 1,\n  \"daysInMonthType\": 1,\n  \"locale\": \"en\",\n  \"dateFormat\": \"yyyy-MM-dd\",\n  \"fundSourceAccountId\": \"{{gl_fund_source_id}}\",\n  \"loanPortfolioAccountId\": \"{{gl_loan_portfolio_id}}\",\n  \"transfersInSuspenseAccountId\": \"{{gl_transfers_id}}\",\n  \"interestOnLoanAccountId\": \"{{gl_interest_income_id}}\",\n  \"incomeFromFeeAccountId\": \"{{gl_fee_income_id}}\",\n  \"incomeFromPenaltyAccountId\": \"{{gl_fee_income_id}}\",\n  \"incomeFromRecoveryAccountId\": \"{{gl_fee_income_id}}\",\n  \"writeOffAccountId\": \"{{gl_write_off_id}}\",\n  \"overpaymentLiabilityAccountId\": \"{{gl_overpayment_id}}\"\n}"
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200,201].includes(pm.response.code)) {",
+                  "  const id = pm.response.json().resourceId || pm.response.json().productId;",
+                  "  if (id) pm.environment.set('product_id', String(id));",
+                  "}",
+                  "pm.test('created or already handled', () => pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT loan product (edit / update example)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{fineract_url}}/loanproducts/{product_id}",
+            "description": "Requires product_id from GET/POST. Edits product metadata / accounting mapping.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"SME Asset Finance\",\n  \"shortName\": \"SMEA\",\n  \"externalId\": \"SME-ASSET-FINANCE\",\n  \"description\": \"Updated via Postman \\u2014 still 18% p.a. cash accounting\",\n  \"currencyCode\": \"RWF\",\n  \"digitsAfterDecimal\": 0,\n  \"inMultiplesOf\": 1,\n  \"principal\": 1000000,\n  \"minPrincipal\": 100000,\n  \"maxPrincipal\": 50000000,\n  \"numberOfRepayments\": 12,\n  \"repaymentEvery\": 1,\n  \"repaymentFrequencyType\": 2,\n  \"interestRatePerPeriod\": 18,\n  \"interestRateFrequencyType\": 3,\n  \"amortizationType\": 1,\n  \"interestType\": 0,\n  \"interestCalculationPeriodType\": 1,\n  \"transactionProcessingStrategyCode\": \"mifos-standard-strategy\",\n  \"accountingRule\": 2,\n  \"isInterestRecalculationEnabled\": false,\n  \"daysInYearType\": 1,\n  \"daysInMonthType\": 1,\n  \"locale\": \"en\",\n  \"dateFormat\": \"yyyy-MM-dd\",\n  \"fundSourceAccountId\": \"{{gl_fund_source_id}}\",\n  \"loanPortfolioAccountId\": \"{{gl_loan_portfolio_id}}\",\n  \"transfersInSuspenseAccountId\": \"{{gl_transfers_id}}\",\n  \"interestOnLoanAccountId\": \"{{gl_interest_income_id}}\",\n  \"incomeFromFeeAccountId\": \"{{gl_fee_income_id}}\",\n  \"incomeFromPenaltyAccountId\": \"{{gl_fee_income_id}}\",\n  \"incomeFromRecoveryAccountId\": \"{{gl_fee_income_id}}\",\n  \"writeOffAccountId\": \"{{gl_write_off_id}}\",\n  \"overpaymentLiabilityAccountId\": \"{{gl_overpayment_id}}\"\n}"
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET loan product by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              }
+            ],
+            "url": "{{fineract_url}}/loanproducts/{product_id}",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST role assessment-api (optional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{fineract_url}}/roles",
+            "description": "Optional. make setup-part-b already creates role+user. 409/error if exists \u2014 then GET /roles.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"assessment-api\",\n  \"description\": \"Least-privilege API role for assessment\"\n}"
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if ([200,201].includes(pm.response.code)) {",
+                  "  const id = pm.response.json().resourceId || pm.response.json().roleId;",
+                  "  if (id) pm.environment.set('role_id', String(id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Fineract-Platform-TenantId",
+                "value": "{{fineract_tenant}}"
+              }
+            ],
+            "url": "{{fineract_url}}/roles",
+            "description": "",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{fineract_user}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{fineract_password}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const roles = pm.response.json() || [];",
+                  "const r = roles.find(x => x.name==='assessment-api');",
+                  "if (r) pm.environment.set('role_id', String(r.id));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 \u2014 Integration: Client + Loan (uses product)",
+      "description": "",
+      "item": [
+        {
+          "name": "POST /clients",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/clients",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_uid\": \"{{client_uid}}\",\n  \"firstname\": \"Postman\",\n  \"lastname\": \"{{run_id}}\",\n  \"activation_date\": \"{{today}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /loans/apply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/loans/apply",
+            "description": "principal must be >= 100000 (product minPrincipal). Uses SME product from Part B.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"client_uid\": \"{{client_uid}}\",\n  \"principal\": \"{{principal}}\",\n  \"submitted_on_date\": \"{{today}}\",\n  \"expected_disbursement_date\": \"{{today}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('apply ok', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /loans/{ref}/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/loans/{{loan_reference}}/approve",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved_on_date\": \"{{today}}\",\n  \"expected_disbursement_date\": \"{{today}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /loans/{ref}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/loans/{{loan_reference}}",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 \u2014 Integration: Money (disburse / repay / reverse)",
+      "item": [
+        {
+          "name": "POST /loans/disburse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/loans/disburse",
+            "description": "external_reference (=disburse_ref) is money idempotency key \u2192 Fineract txn externalId + ERP journal ref. NOT a GL code.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{disburse_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\",\n  \"rail\": \"offline\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('COMPLETED', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.eql('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify ERP journal for disburse_ref",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{mock_erp_url}}/journal-entries?external_reference={{disburse_ref}}",
+              "host": [
+                "{{mock_erp_url}}"
+              ],
+              "path": [
+                "journal-entries"
+              ],
+              "query": [
+                {
+                  "key": "external_reference",
+                  "value": "{{disburse_ref}}"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('1 journal', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /loans/disburse (idempotent replay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/loans/disburse",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{disburse_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"{{principal}}\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('replay', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().idempotent_replay).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /loans/repay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/loans/repay",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{repay_ref}}\",\n  \"loan_reference\": \"{{loan_reference}}\",\n  \"amount\": \"100000\",\n  \"currency\": \"RWF\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST reverse repayment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/transactions/reverse-repayment",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_reference\": \"{{reverse_ref}}\",\n  \"original_external_reference\": \"{{repay_ref}}\",\n  \"transaction_date\": \"{{today}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 \u2014 Ops: reconcile / recover / faults / errors",
+      "item": [
+        {
+          "name": "GET reconcile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/reconcile/fineract-erp",
+            "description": ""
+          }
+        },
+        {
+          "name": "GET admin recover list",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/admin/recover",
+            "description": ""
+          }
+        },
+        {
+          "name": "POST admin recover",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/admin/recover",
+            "description": ""
+          }
+        },
+        {
+          "name": "Missing API key \u2192 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              }
+            ],
+            "url": "{{integration_url}}/sync/coa",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));",
+                  "pm.test('envelope', () => pm.expect(pm.response.json().error.code).to.eql('unauthorized'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ERP fault none",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{mock_erp_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mock_erp_url}}/admin/faults",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mode\":\"none\"}"
+            }
+          }
+        },
+        {
+          "name": "Fineract fault none",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{integration_api_key}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlation_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{integration_url}}/admin/fineract-fault",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mode\":\"none\"}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 \u2014 Shortcut (skip Part B if already seeded)",
+      "description": "",
+      "item": [
+        {
+          "name": "Reminder: make setup-part-b",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{integration_url}}/health",
+            "description": "Terminal equivalent of folder 03: PYTHONPATH=scripts python scripts/fineract_setup_part_b.py --out evidence/01-part-b-setup.json"
+          }
+        }
+      ]
+    }
+  ]
+}
